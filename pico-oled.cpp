@@ -589,7 +589,7 @@ void pico_oled::draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x)
     uint8_t first_page = y1 / OLED_PAGE_HEIGHT;    
     uint8_t last_page = y2 / OLED_PAGE_HEIGHT;
     uint8_t top_offset = y1 - first_page*OLED_PAGE_HEIGHT;
-    uint8_t bottom_offset = y2 - last_page*OLED_PAGE_HEIGHT;
+    uint8_t bottom_offset = y2 - last_page*OLED_PAGE_HEIGHT + 1;
 
     for (uint8_t page = first_page; page <= last_page; page++)
     {
@@ -609,4 +609,50 @@ void pico_oled::draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x)
         this->screen_buffer[1 + x + page*this->oled_width] |= mask; 
     }
 
+}
+
+
+// Draw a vertical progress bar 
+// 
+void pico_oled::draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
+{
+    uint8_t height = y1 - y0;
+    uint8_t filled_px = (fullness * (height - 2)) / 100;
+
+    // Draw the outline
+    this->draw_fast_hline(x0, x1, y0);  // Top 
+    this->draw_fast_hline(x0, x1, y1);  // Bottom
+    this->draw_fast_vline(y0, y1, x0);  // Left
+    this->draw_fast_vline(y0, y1, x1);  // Right    
+
+    // Draw lines to fill the internal area
+    for (uint8_t y_line = y1 - 1; y_line >= (y1 - 1) - filled_px; y_line--)
+        this->draw_fast_hline(x0 + 1, x1 - 1, y_line);
+}
+
+
+// Draw a horizontal progress bar 
+// start_right: Greater than 0 for bar to start on the right instead of the left side
+void pico_oled::draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
+{
+    uint8_t width = x1 - x0;
+    uint8_t filled_px = (fullness * (width - 2)) / 100;
+
+    // Draw the outline
+    this->draw_fast_hline(x0, x1, y0);  // Top 
+    this->draw_fast_hline(x0, x1, y1);  // Bottom
+    this->draw_fast_vline(y0, y1, x0);  // Left
+    this->draw_fast_vline(y0, y1, x1);  // Right    
+
+    // Draw lines to fill the internal area
+    if (start_right)
+    {
+        for (uint8_t x_line = x1 - 1; x_line >= (x1 - 1) - filled_px; x_line--)
+            this->draw_fast_vline(y0 + 1, y1 - 1, x_line);
+    }
+    else
+    {
+        for (uint8_t x_line = x0 + 1; x_line <= (x0 + 1) + filled_px; x_line++)
+            this->draw_fast_vline(y0 + 1, y1 - 1, x_line);
+    }
 }

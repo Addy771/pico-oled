@@ -77,7 +77,9 @@ class pico_oled
         void draw_pixel(uint8_t x, uint8_t y);
         void draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
         void draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y);
-        void draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x);        
+        void draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x);  
+        void draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1); 
+        void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);     
 };
 
 typedef struct
