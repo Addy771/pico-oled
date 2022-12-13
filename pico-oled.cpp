@@ -656,3 +656,21 @@ void pico_oled::draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uin
             this->draw_fast_vline(y0 + 1, y1 - 1, x_line);
     }
 }
+
+
+
+/* Draw a vertical, bitmapped progress bar.
+ * empty_bitmap: bitmap of the bar (empty frame) when it is 0% full
+ * full_bitmap: bitmap of the bar (with or without frame) when it is 100% full.
+*/
+void pico_oled::draw_bmp_vbar(uint8_t fullness, const uint8_t *empty_bitmap, const uint8_t *full_bitmap, uint8_t x, uint8_t y)
+{
+    uint8_t filled_px = (fullness * empty_bitmap.height) / 100;   // This assumes the active area is the whole bar bmp, including frame
+
+    // Draw the empty frame 
+    this->blit_screen(empty_bitmap, empty_bitmap.width, 0, 0, empty_bitmap.width, empty_bitmap.height, x, y);
+
+    // Draw as much of the full bitmap that would be proportional to fullness (from the bottom)
+    this->blit_screen(full_bitmap, full_bitmap.width, 0, full_bitmap.height - filled_px, full_bitmap.width, filled_px, x, y + (full_bitmap.height - filled_px));
+
+}
