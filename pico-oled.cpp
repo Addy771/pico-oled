@@ -30,6 +30,10 @@ pico_oled::pico_oled(uint8_t i2c_address, uint8_t screen_width, uint8_t screen_h
     // Set cursor default position to something reasonable
     this->cursor_x = 0;
     this->cursor_y = 10;
+
+    // Set the draw pixel function to the default
+    this->draw_pixel_fn = &this->draw_pixel;
+    this->pixel_counter = 0;
 }
 
 
@@ -459,20 +463,35 @@ void pico_oled::draw_pixel(uint8_t x, uint8_t y)
 }
 
 
+// Draw a single pixel every other time this function is called
+void pico_oled::draw_pixel_alternating(uint8_t x, uint8_t y)
+{
+    if (this->pixel_counter++ > 0)
+    {
+        this->pixel_counter = 0;
+        this->draw_pixel(x, y);
+    }   
+}
+
+
 // Draw a line with Bresenham's algorithm
 void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
-    // Draw straight lines with the fast function instead
-    if (y1 == y2)
+    // Only try to use fast line functions for the default solid line draw_pixel()
+    if (this->draw_pixel_fn == &this->draw_pixel)
     {
-        this->draw_fast_hline(x1, x2, y1);
-        return;
-    }
+        // Draw straight lines with the fast function instead
+        if (y1 == y2)
+        {
+            this->draw_fast_hline(x1, x2, y1);
+            return;
+        }
 
-    if (x1 == x2)
-    {
-        this->draw_fast_vline(y1, y2, x1);
-        return;
+        if (x1 == x2)
+        {
+            this->draw_fast_vline(y1, y2, x1);
+            return;
+        }
     }
 
     int16_t dx, dy, p;
@@ -522,9 +541,9 @@ void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
     {
         // If slope is less than one, coordinates are swapped
         if (steep)
-            this->draw_pixel(y1, x1);
+            this->draw_pixel_fn(y1, x1);
         else
-            this->draw_pixel(x1, y1);
+            this->draw_pixel_fn(x1, y1);
 
         p -= dy;
 
@@ -535,6 +554,18 @@ void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
         }
 
     }
+}
+
+
+// Draw a dotted line by switching out the draw_pixel function
+void pico_oled::draw_line_dotted(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
+{
+    this->pixel_counter = 0;    // Reset pixel counter so that calling this function results in the same kind of line draw each time
+    this->draw_pixel_fn = &this->draw_pixel_alternating;  // Change the draw pixel function so it only draws every other pixel
+    
+    this->draw_line(x1, y1, x2, y2);
+
+    this->draw_pixel_fn = &this->draw_pixel;    // Restore the default draw_pixel function
 }
 
 
@@ -656,7 +687,6 @@ void pico_oled::draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uin
             this->draw_fast_vline(y0 + 1, y1 - 1, x_line);
     }
 }
-
 
 
 /* Draw a vertical, bitmapped progress bar.

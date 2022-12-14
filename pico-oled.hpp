@@ -43,6 +43,7 @@ class pico_oled
         uint8_t font_set;
         uint8_t cursor_x;
         uint8_t cursor_y;
+        void *draw_pixel_fn(uint8_t, uint8_t);
 
     public:
         pico_oled(uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height);    
@@ -75,12 +76,16 @@ class pico_oled
         void print_num(const char *format_str, uint8_t print_data);
         void print_num(const char *format_str, int8_t print_data);        
         void draw_pixel(uint8_t x, uint8_t y);
+        void draw_pixel_alternating(uint8_t x, uint8_t y);
         void draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
+        void draw_line_dotted(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
         void draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y);
         void draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x);  
         void draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1); 
         void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);   
         void draw_bmp_vbar(uint8_t fullness, const uint8_t *empty_bitmap, const uint8_t *full_bitmap, uint8_t x, uint8_t y);
+
+        uint8_t pixel_counter;
 };
 
 typedef struct
