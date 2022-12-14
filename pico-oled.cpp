@@ -281,9 +281,6 @@ void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint1
             }
             else
             {
-                //// Offset -3 has problem
-
-
                 // Shift source data by offset_delta so it ends up in the right position
                 // Shift is different when drawing to the same page a second time
                 if (last_screen_page == screen_page)
@@ -703,4 +700,50 @@ void pico_oled::draw_bmp_vbar(uint8_t fullness, const uint8_t *empty_bitmap, con
     // Draw as much of the full bitmap that would be proportional to fullness (from the bottom)
     this->blit_screen(full_bitmap, full_bitmap.width, 0, full_bitmap.height - filled_px, full_bitmap.width, filled_px, x, y + (full_bitmap.height - filled_px));
 
+}
+
+
+/* Solid fill a rectangular region. 
+ * blank: if true, rectangle will be cleared (off) instead of filled
+*/
+void pico_oled::fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
+{
+    // Switch coordinates around so that y1 < y2
+    if (y1 > y2)
+    {
+        uint8_t tmp;
+        tmp = x1;   // Save x1
+        x1 = x2;    // x2 -> x1
+        x2 = tmp;   // x1 -> x2
+
+        tmp = y1;   // Save y1
+        y1 = y2;    // y2 -> y1
+        y2 = tmp;   // y1 -> y2
+    }    
+
+    uint8_t start_page = y1 / OLED_PAGE_HEIGHT;
+    uint8_t end_page = y2 / OLED_PAGE_HEIGHT;    
+    uint8_t col_mask;
+
+    for (uint8_t page = start_page; page <= end_page; page++)
+    {
+        for(uint8_t column = x1; column != x2; (x1 <= x2) ? ++column : --column)
+        {
+            col_mask = 0xFF;
+
+            // For the first page, we may not need to fill every pixel
+            if (page == start_page)
+                col_mask &= 0xFF << (y1 - page*OLED_PAGE_HEIGHT);   // Shift zeros into LSBs
+
+            // For the last page, we may not need to fill every pixel
+            if (page == end_page)
+                col_mask &= 0xFF >> (y2 - page*OLED_PAGE_HEIGHT);   // Shift zeros into MSBs
+            
+            // Modify the screen contents according to the specified mode
+            if (blank)
+                this->screen_buffer[1 + column + page*this->oled_width] &= ~col_mask;
+            else
+                this->screen_buffer[1 + column + page*this->oled_width] |= col_mask;
+        }
+    }
 }

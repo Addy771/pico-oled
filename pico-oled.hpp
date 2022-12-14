@@ -84,6 +84,7 @@ class pico_oled
         void draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1); 
         void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);   
         void draw_bmp_vbar(uint8_t fullness, const uint8_t *empty_bitmap, const uint8_t *full_bitmap, uint8_t x, uint8_t y);
+        void fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
 
         uint8_t pixel_counter;
 };
