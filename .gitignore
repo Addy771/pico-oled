@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+
+# Build, project files
+.idea
+.vscode
+cmake-*
+.DS_Store
+build

@@ -32,7 +32,7 @@ pico_oled::pico_oled(uint8_t i2c_address, uint8_t screen_width, uint8_t screen_h
     this->cursor_y = 10;
 
     // Set the draw pixel function to the default
-    this->draw_pixel_fn = &this->draw_pixel;
+    this->draw_pixel_fn = &pico_oled::draw_pixel;
     this->pixel_counter = 0;
 }
 
@@ -475,7 +475,7 @@ void pico_oled::draw_pixel_alternating(uint8_t x, uint8_t y)
 void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
     // Only try to use fast line functions for the default solid line draw_pixel()
-    if (this->draw_pixel_fn == &this->draw_pixel)
+    if (this->draw_pixel_fn == &pico_oled::draw_pixel)
     {
         // Draw straight lines with the fast function instead
         if (y1 == y2)
@@ -538,9 +538,9 @@ void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
     {
         // If slope is less than one, coordinates are swapped
         if (steep)
-            this->draw_pixel_fn(y1, x1);
+            (*this.*draw_pixel_fn)(y1, x1);
         else
-            this->draw_pixel_fn(x1, y1);
+            (*this.*draw_pixel_fn)(x1, y1);
 
         p -= dy;
 
@@ -558,11 +558,10 @@ void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 void pico_oled::draw_line_dotted(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
     this->pixel_counter = 0;    // Reset pixel counter so that calling this function results in the same kind of line draw each time
-    this->draw_pixel_fn = &this->draw_pixel_alternating;  // Change the draw pixel function so it only draws every other pixel
-    
+    this->draw_pixel_fn = &pico_oled::draw_pixel_alternating;  // Change the draw pixel function so it only draws every other pixel
     this->draw_line(x1, y1, x2, y2);
 
-    this->draw_pixel_fn = &this->draw_pixel;    // Restore the default draw_pixel function
+    this->draw_pixel_fn = &pico_oled::draw_pixel;    // Restore the default draw_pixel function
 }
 
 
@@ -648,10 +647,7 @@ void pico_oled::draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, 
     uint8_t filled_px = (fullness * (height - 2)) / 100;
 
     // Draw the outline
-    this->draw_fast_hline(x0, x1, y0);  // Top 
-    this->draw_fast_hline(x0, x1, y1);  // Bottom
-    this->draw_fast_vline(y0, y1, x0);  // Left
-    this->draw_fast_vline(y0, y1, x1);  // Right    
+    this->draw_box(x0, y0, x1, y1); 
 
     // Draw lines to fill the internal area
     for (uint8_t y_line = y1 - 1; y_line >= (y1 - 1) - filled_px; y_line--)
@@ -667,10 +663,7 @@ void pico_oled::draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uin
     uint8_t filled_px = (fullness * (width - 2)) / 100;
 
     // Draw the outline
-    this->draw_fast_hline(x0, x1, y0);  // Top 
-    this->draw_fast_hline(x0, x1, y1);  // Bottom
-    this->draw_fast_vline(y0, y1, x0);  // Left
-    this->draw_fast_vline(y0, y1, x1);  // Right    
+    this->draw_box(x0, y0, x1, y1);
 
     // Draw lines to fill the internal area
     if (start_right)
@@ -690,15 +683,15 @@ void pico_oled::draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uin
  * empty_bitmap: bitmap of the bar (empty frame) when it is 0% full
  * full_bitmap: bitmap of the bar (with or without frame) when it is 100% full.
 */
-void pico_oled::draw_bmp_vbar(uint8_t fullness, const uint8_t *empty_bitmap, const uint8_t *full_bitmap, uint8_t x, uint8_t y)
+void pico_oled::draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const bitmap full_bitmap, uint8_t x, uint8_t y)
 {
     uint8_t filled_px = (fullness * empty_bitmap.height) / 100;   // This assumes the active area is the whole bar bmp, including frame
 
     // Draw the empty frame 
-    this->blit_screen(empty_bitmap, empty_bitmap.width, 0, 0, empty_bitmap.width, empty_bitmap.height, x, y);
+    this->blit_screen(empty_bitmap.bitmap, empty_bitmap.width, 0, 0, empty_bitmap.width, empty_bitmap.height, x, y);
 
     // Draw as much of the full bitmap that would be proportional to fullness (from the bottom)
-    this->blit_screen(full_bitmap, full_bitmap.width, 0, full_bitmap.height - filled_px, full_bitmap.width, filled_px, x, y + (full_bitmap.height - filled_px));
+    this->blit_screen(full_bitmap.bitmap, full_bitmap.width, 0, full_bitmap.height - filled_px, full_bitmap.width, filled_px, x, y + (full_bitmap.height - filled_px));
 
 }
 
@@ -746,4 +739,14 @@ void pico_oled::fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uin
                 this->screen_buffer[1 + column + page*this->oled_width] |= col_mask;
         }
     }
+}
+
+
+// Draw a box outline at the given coordinates
+void pico_oled::draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
+{
+    this->draw_fast_hline(x0, x1, y0);  // Top 
+    this->draw_fast_hline(x0, x1, y1);  // Bottom
+    this->draw_fast_vline(y0, y1, x0);  // Left
+    this->draw_fast_vline(y0, y1, x1);  // Right       
 }

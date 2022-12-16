@@ -32,6 +32,14 @@
 //#define OLED_BUF_LEN (OLED_NUM_PAGES * OLED_WIDTH)
 
 
+typedef struct
+{
+    const uint8_t *bitmap;
+    uint16_t width;
+    uint16_t height;
+} bitmap;
+
+
 class pico_oled
 {
     private:
@@ -43,7 +51,7 @@ class pico_oled
         uint8_t font_set;
         uint8_t cursor_x;
         uint8_t cursor_y;
-        void *draw_pixel_fn(uint8_t, uint8_t);
+        void (pico_oled::*draw_pixel_fn)(uint8_t, uint8_t);
 
     public:
         pico_oled(uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height);    
@@ -83,15 +91,11 @@ class pico_oled
         void draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x);  
         void draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1); 
         void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);   
-        void draw_bmp_vbar(uint8_t fullness, const uint8_t *empty_bitmap, const uint8_t *full_bitmap, uint8_t x, uint8_t y);
+        void draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const bitmap full_bitmap, uint8_t x, uint8_t y);
         void fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
+        void draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)        ;
 
         uint8_t pixel_counter;
 };
 
-typedef struct
-{
-    const uint8_t *bitmap;
-    uint16_t width;
-    uint16_t height;
-} bitmap;
+
