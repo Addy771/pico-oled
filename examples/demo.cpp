@@ -30,7 +30,7 @@ int main()
     display.set_font(press_start_2p);
 
     uint8_t i, x, y, x_dir, y_dir;
-    uint8_t min_y = 8;
+    uint8_t min_y = 9;
 
     display.fill(0);    // Clear display             
     display.print("Pico-OLED Library Demo\n\n");
@@ -46,7 +46,7 @@ int main()
         display.print("Font: 2P Press Start\n");
 
         display.set_font(too_simple);
-        display.print("Font: Too Simple\n");
+        display.print("Font: Too Simple\n\n");
 
         display.set_font(press_start_2p);
         display.print_num("Float printing: %.2f\n", 1.2345f);
@@ -212,7 +212,7 @@ int main()
             blank = !blank;
             display.render();
 
-            sleep_ms(50);
+            sleep_ms(100);
         }
         sleep_ms(2000);
 
@@ -234,7 +234,7 @@ int main()
 
             display.render();
 
-            sleep_ms(50);
+            sleep_ms(100);
         }
         sleep_ms(2000);
 
