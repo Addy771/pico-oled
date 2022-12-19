@@ -27,10 +27,6 @@
 #define OLED_READ_MODE _u(0xFF)
 #define OLED_PAGE_HEIGHT _u(8)
 
-// Display parameters
-//#define OLED_NUM_PAGES OLED_HEIGHT / OLED_PAGE_HEIGHT
-//#define OLED_BUF_LEN (OLED_NUM_PAGES * OLED_WIDTH)
-
 
 typedef struct
 {
@@ -38,6 +34,16 @@ typedef struct
     uint16_t width;
     uint16_t height;
 } bitmap;
+
+typedef struct 
+{
+    int16_t origin_x;
+    int16_t origin_y;
+    uint16_t needle_len;
+    int16_t scale_min;
+    int16_t scale_max;
+    int16_t needle_value;
+} analog_gauge;
 
 
 class pico_oled

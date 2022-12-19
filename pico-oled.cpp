@@ -750,3 +750,9 @@ void pico_oled::draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
     this->draw_fast_vline(y0, y1, x0);  // Left
     this->draw_fast_vline(y0, y1, x1);  // Right       
 }
+
+
+// x = r*cos(th)
+// y = r*sin(th)
+// th = atan(y/x)
+// r = sqrt(x^2 + y^2)
