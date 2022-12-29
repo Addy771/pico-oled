@@ -9,7 +9,7 @@
 
 #include "bitmap/raspberry.h"
 
-#define DISPLAY_I2C_ADDR _u(0x3C)
+#define DISPLAY_I2C_ADDR _u(0x3C) //_u(0x3C)
 #define DISPLAY_WIDTH _u(128)
 #define DISPLAY_HEIGHT _u(64)
 
@@ -24,16 +24,22 @@ int main()
     gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
     gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
 
-    // Instantiate display and initialize it
-    pico_oled display(DISPLAY_I2C_ADDR, DISPLAY_WIDTH, DISPLAY_HEIGHT);   
+    // Init display with SSD1309 driver IC and a reset pin
+    pico_oled display(OLED_SSD1309, DISPLAY_I2C_ADDR, DISPLAY_WIDTH, DISPLAY_HEIGHT, /*reset_gpio=*/ 15);   
+
+    // Init display with SSD1306 driver IC
+    // pico_oled display(OLED_SSD1306, DISPLAY_I2C_ADDR, DISPLAY_WIDTH, DISPLAY_HEIGHT);       
+
     display.oled_init();
     display.set_font(press_start_2p);
 
-    uint8_t i, x, y, x_dir, y_dir;
+    uint8_t x, y, x_dir, y_dir;
     uint8_t min_y = 9;
+    uint16_t i;
 
-    display.fill(0);    // Clear display             
-    display.print("Pico-OLED Library Demo\n\n");
+    display.fill(0);    // Clear display    
+    display.set_cursor(0,0);             
+    display.print("Pico-OLED\nLibrary Demo");
     display.render();
     sleep_ms(2000);    
 
@@ -42,15 +48,27 @@ int main()
         // Text demo
         display.fill(0);    // Clear display     
         display.set_cursor(0,0);           
+        display.print("Text demo\n\n");
+        display.print("Font:\n2P Press Start");
+        display.render();
+        sleep_ms(2000);       
 
-        display.print("Font: 2P Press Start\n");
 
+        display.fill(0);    // Clear display     
+        display.set_cursor(0,0);           
+        display.print("Text demo\n\n");
         display.set_font(too_simple);
-        display.print("Font: Too Simple\n\n");
+        display.print("Font:\nToo Simple");
+        display.render();
+        sleep_ms(2000);  
 
+
+        display.fill(0);    // Clear display     
+        display.set_cursor(0,0);           
         display.set_font(press_start_2p);
-        display.print_num("Float printing: %.2f\n", 1.2345f);
-        display.print_num("Int printing: %d", (uint8_t) 123);   // When printing variables, the cast is not needed
+        display.print("Text demo\n\n");
+        display.print_num("Float print:\n%.2f\n\n", 1.2345f);
+        display.print_num("Int print:\n%d", (uint8_t) 123);   // When printing variables, the cast is not needed
 
         display.render();
         sleep_ms(2000);
@@ -62,7 +80,7 @@ int main()
         x_dir = 1;
         y_dir = 1;
 
-        for(i = 0; i < 100; i++)
+        for(i = 0; i < 500; i++)
         {
             display.fill(0);    // Clear display    
             display.set_cursor(0,0);    
@@ -94,8 +112,7 @@ int main()
                     y_dir = 1;
             }            
 
-        }
-        sleep_ms(2000);        
+        }    
 
 
         // Line demo
@@ -105,7 +122,7 @@ int main()
         y_dir = 0;
 
         // Draw solid lines
-        for(i = 0; i < 50; i++)
+        for(i = 0; i < 400; i++)
         {
             display.fill(0);    // Clear display    
             display.set_cursor(0,0);    
@@ -122,7 +139,7 @@ int main()
             // Move x,y point
             if (x_dir)
             {
-                if (++x >= DISPLAY_WIDTH - 1)
+                if (++x >= DISPLAY_WIDTH - 2)
                     x_dir = 0;
             }
             else
@@ -133,7 +150,7 @@ int main()
 
             if (y_dir)
             {
-                if (++y >= DISPLAY_HEIGHT - 1)
+                if (++y >= DISPLAY_HEIGHT - 2)
                     y_dir = 0;
             }
             else
@@ -142,13 +159,12 @@ int main()
                     y_dir = 1;
             }     
 
-            sleep_ms(50);
+            sleep_ms(10);
         }
-        sleep_ms(2000);
 
 
         // Draw dotted lines
-        for(i = 0; i < 50; i++)
+        for(i = 0; i < 400; i++)
         {
             display.fill(0);    // Clear display        
             display.set_cursor(0,0);        
@@ -165,7 +181,7 @@ int main()
             // Move x,y point
             if (x_dir)
             {
-                if (++x >= DISPLAY_WIDTH - 1)
+                if (++x >= DISPLAY_WIDTH - 2)
                     x_dir = 0;
             }
             else
@@ -176,7 +192,7 @@ int main()
 
             if (y_dir)
             {
-                if (++y >= DISPLAY_HEIGHT - 1)
+                if (++y >= DISPLAY_HEIGHT - 2)
                     y_dir = 0;
             }
             else
@@ -185,10 +201,9 @@ int main()
                     y_dir = 1;
             }     
 
-            sleep_ms(50);
+            sleep_ms(10);
         }    
 
-        sleep_ms(2000);
 
 
         // Rectangle demo
@@ -197,10 +212,10 @@ int main()
 
         display.fill(0);    // Clear display     
         display.set_cursor(0,0);   
-        display.print("Filled Rectangles");   
+        display.print("Filled Rects");   
 
 
-        for(i = 0; i < 50; i++)
+        for(i = 0; i < 100; i++)
         {
             box_w = rand() % (DISPLAY_WIDTH / 2);
             box_h = rand() % (DISPLAY_HEIGHT / 2);
@@ -214,7 +229,6 @@ int main()
 
             sleep_ms(100);
         }
-        sleep_ms(2000);
 
 
         // Box demo
@@ -236,7 +250,6 @@ int main()
 
             sleep_ms(100);
         }
-        sleep_ms(2000);
 
         
         // Bar graph demo

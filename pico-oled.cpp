@@ -9,8 +9,8 @@
 
 #define PRINT_NUM_BUFFER 30     // Length of temporary buffers for printing numbers
 
-// pico-oled constructor
-pico_oled::pico_oled(uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height)
+
+pico_oled::pico_oled(OLED_type controller_ic, uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height, uint8_t reset_gpio)
 {
     // Init private variables
     this->i2c_addr = i2c_address;
@@ -34,6 +34,20 @@ pico_oled::pico_oled(uint8_t i2c_address, uint8_t screen_width, uint8_t screen_h
     // Set the draw pixel function to the default
     this->draw_pixel_fn = &pico_oled::draw_pixel;
     this->pixel_counter = 0;
+
+    // Store the controller ID
+    this->oled_controller = controller_ic;
+
+    // Store the reset GPIO 
+    this->reset_gpio = reset_gpio;
+
+    // Initialize reset pin and drive it low if a valid gpio pin was given
+    if (reset_gpio <= 29)
+    {    
+        gpio_init(reset_gpio);
+        gpio_set_dir(reset_gpio, GPIO_OUT);
+        gpio_put(reset_gpio, 0);    // hold display in reset    
+    }
 }
 
 
@@ -52,12 +66,30 @@ void pico_oled::oled_send_cmd(uint8_t cmd)
 // Write to the display's configuration registers to set it up
 void pico_oled::oled_init()
 {
-    // some of these commands are not strictly necessary as the reset
-    // process defaults to some of these but they are shown here
-    // to demonstrate what the initialization sequence looks like
+    // Only use the reset signaling if a valid GPIO pin is selected
+    if (this->reset_gpio <= 29)
+    {
+        sleep_ms(100);      // Wait some time in reset to allow display to stabilize
+        gpio_put(this->reset_gpio, 1);    // take display out of reset
+        sleep_ms(10);        
+    }
 
-    // some configuration values are recommended by the board manufacturer
+    // Run the appropriate init function
+    switch (this->oled_controller)
+    {
+        case OLED_SSD1309:
+            this->oled_ssd1309_init();
+            break;
 
+        case OLED_SSD1306:
+        default:
+            this->oled_ssd1306_init();
+    }
+}
+
+// Set configuration registers for ssd1306 OLED controllers
+void pico_oled::oled_ssd1306_init()
+{
     this->oled_send_cmd(OLED_SET_DISP | 0x00); // set display off
 
     /* memory mapping */
@@ -111,6 +143,67 @@ void pico_oled::oled_init()
     this->render();    
 
     this->oled_send_cmd(OLED_SET_DISP | 0x01); // turn display on
+}
+
+
+// Set configuration registers for ssd1309 OLED controllers
+void pico_oled::oled_ssd1309_init()
+{
+    this->oled_send_cmd(OLED_SET_DISP | 0x00); // set display off
+
+    /* memory mapping */
+    this->oled_send_cmd(OLED_SET_MEM_ADDR); // set memory address mode
+    this->oled_send_cmd(0x00); // horizontal addressing mode 
+
+    /* resolution and layout */
+    this->oled_send_cmd(OLED_SET_DISP_START_LINE); // set display start line to 0
+
+    this->oled_send_cmd(OLED_SET_SEG_REMAP | 0x01); // set segment re-map ssd1306
+    // column address 127 is mapped to SEG0
+
+    this->oled_send_cmd(OLED_SET_COM_OUT_DIR | 0x08); // set COM (common) output scan direction
+    // scan from bottom up, COM[N-1] to COM0
+
+    this->oled_send_cmd(OLED_SET_MUX_RATIO); // set multiplex ratio
+    this->oled_send_cmd(this->oled_height - 1); // set OLED vertical resolution
+
+    this->oled_send_cmd(OLED_SET_DISP_OFFSET); // set display offset
+    this->oled_send_cmd(0x00); // no offset
+
+    this->oled_send_cmd(OLED_SET_COM_PIN_CFG); // set COM (common) pins hardware configuration
+    this->oled_send_cmd(0x12); // 0x12 for alternative COM pin configuration
+
+    /* timing and driving scheme */
+    this->oled_send_cmd(OLED_SET_DISP_CLK_DIV); // set display clock divide ratio 
+    this->oled_send_cmd(0xa0); // div ratio of 1, osc freq 0xA
+    // this->oled_send_cmd(0x70); // div ratio of 1, default freq
+
+    this->oled_send_cmd(OLED_SET_PRECHARGE); // set pre-charge period
+    //this->oled_send_cmd(0xF1); // ssd1309
+    this->oled_send_cmd(0xd3); // ssd1309
+
+    this->oled_send_cmd(OLED_SET_VCOM_DESEL); // set VCOMH deselect level
+    this->oled_send_cmd(0x30);  // 0.83xVcc 
+
+    /* display */
+    this->oled_send_cmd(OLED_SET_CONTRAST); // set contrast control 
+    this->oled_send_cmd(0x0F); // 0 to 255
+
+    this->oled_send_cmd(OLED_SET_ENTIRE_ON); // set entire display on to follow RAM content
+
+    this->oled_send_cmd(OLED_SET_NORM_INV); // set normal (not inverted) display
+
+    this->oled_send_cmd(OLED_SET_CHARGE_PUMP); // set charge pump
+    this->oled_send_cmd(0x10);  // Disabled, external charge pump for ssd1309
+
+    this->oled_send_cmd(OLED_SET_SCROLL | 0x00); // deactivate horizontal scrolling if set
+    // this is necessary as memory writes will corrupt if scrolling was enabled
+
+    // Clear the display
+    this->fill(0);
+    this->render();    
+
+    this->oled_send_cmd(OLED_SET_DISP | 0x01); // turn display on    
 }
 
 

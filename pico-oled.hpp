@@ -28,6 +28,12 @@
 #define OLED_PAGE_HEIGHT _u(8)
 
 
+typedef enum 
+{
+    OLED_SSD1306,
+    OLED_SSD1309
+} OLED_type;
+
 typedef struct
 {
     const uint8_t *bitmap;
@@ -49,6 +55,8 @@ typedef struct
 class pico_oled
 {
     private:
+        OLED_type oled_controller;
+        uint8_t reset_gpio;
         uint8_t i2c_addr;
         uint8_t oled_height, oled_width;
         uint8_t *screen_buffer;
@@ -60,8 +68,10 @@ class pico_oled
         void (pico_oled::*draw_pixel_fn)(uint8_t, uint8_t);
 
     public:
-        pico_oled(uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height);    
+        pico_oled(OLED_type controller_ic, uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height, uint8_t reset_gpio=64);
         void oled_init();
+        void oled_ssd1306_init();
+        void oled_ssd1309_init();
         void oled_send_cmd(uint8_t cmd);
         void fill(uint8_t fill);
         void all_on(uint8_t disp_on);   
