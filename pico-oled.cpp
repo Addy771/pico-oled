@@ -671,7 +671,7 @@ void pico_oled::draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y)
     }
 
     // fix coordinates or abort if coordinates are out of bounds
-    if (x1 >= this->oled_width - 1  || y >= this->oled_height - 1)
+    if (x1 >= this->oled_width  || y >= this->oled_height)
         return;    
 
     if (x2 >= this->oled_width)
@@ -700,7 +700,7 @@ void pico_oled::draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x)
     }
 
     // fix coordinates or abort if coordinates are out of bounds
-    if (y1 >= this->oled_height - 1  || x >= this->oled_width - 1)
+    if (y1 >= this->oled_height  || x >= this->oled_width)
         return;    
 
     if (y2 >= this->oled_width)
