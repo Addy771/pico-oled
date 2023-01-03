@@ -8,6 +8,8 @@
 #include "../font/too_simple.h"
 
 #include "bitmap/raspberry.h"
+#include "bitmap/thermometer_empty.h"
+#include "bitmap/thermometer_full.h"
 
 #define DISPLAY_I2C_ADDR _u(0x3C) //_u(0x3C)
 #define DISPLAY_WIDTH _u(128)
@@ -51,7 +53,7 @@ int main()
         display.print("Text demo\n\n");
         display.print("Font:\n2P Press Start");
         display.render();
-        sleep_ms(2000);       
+        sleep_ms(3000);       
 
 
         display.fill(0);    // Clear display     
@@ -60,7 +62,7 @@ int main()
         display.set_font(too_simple);
         display.print("Font:\nToo Simple");
         display.render();
-        sleep_ms(2000);  
+        sleep_ms(3000);  
 
 
         display.fill(0);    // Clear display     
@@ -71,7 +73,7 @@ int main()
         display.print_num("Int print:\n%d", (uint8_t) 123);   // When printing variables, the cast is not needed
 
         display.render();
-        sleep_ms(2000);
+        sleep_ms(3000);
 
 
         // Bitmap demo
@@ -255,28 +257,44 @@ int main()
         // Bar graph demo
         uint8_t count_down, fullness;
 
-        for (i = 0; i < 5; i++)     
+        count_down = 0;
+        fullness = 0;
+
+        for (i = 0; i < 500; i++)     
         {
-            count_down = 0;
-            for (fullness = 0; !count_down && fullness != 0; count_down ? fullness-- : fullness++)
+            display.fill(0);    // Clear display     
+            display.set_cursor(0,0);   
+            display.print("Bar Graphs");                
+
+            display.draw_vbar(fullness, 0, min_y, 9, DISPLAY_HEIGHT - 1);
+            display.draw_bmp_vbar(fullness, thermometer_empty, thermometer_full, 12, min_y);            
+
+            display.draw_hbar(fullness, false, 22, min_y, DISPLAY_WIDTH - 22, min_y + 10);
+            display.draw_hbar(fullness, true, 22, min_y + 12, DISPLAY_WIDTH - 22, min_y + 22);
+
+
+
+            display.render();
+
+            // Flip direction when the top is reached
+            if (count_down)
             {
-                display.fill(0);    // Clear display     
-                display.set_cursor(0,0);   
-                display.print("Bar Graphs");                
-
-                display.draw_vbar(fullness, 0, min_y, 9, DISPLAY_HEIGHT - 1);
-                display.draw_hbar(fullness, false, 20, min_y, DISPLAY_WIDTH - 20, min_y + 10);
-                display.draw_hbar(fullness, true, 20, min_y + 12, DISPLAY_WIDTH - 20, min_y + 22);
-                //display.draw_bmp_vbar(fullness,);
-
-                display.render();
-
-                // Flip direction when the top is reached
-                if (fullness == 100)
-                    count_down = 1;
+                if (fullness-- == 0)
+                {
+                    fullness = 0;
+                    count_down = 0;
+                }
             }
+            else
+            {
+                if (fullness++ > 100)
+                {
+                    fullness = 100;
+                    count_down = 1;
+                }
+            }
+            
         }
-        sleep_ms(2000);
 
 
     }
