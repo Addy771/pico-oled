@@ -27,14 +27,36 @@
 #define OLED_READ_MODE _u(0xFF)
 #define OLED_PAGE_HEIGHT _u(8)
 
-// Display parameters
-//#define OLED_NUM_PAGES OLED_HEIGHT / OLED_PAGE_HEIGHT
-//#define OLED_BUF_LEN (OLED_NUM_PAGES * OLED_WIDTH)
+
+typedef enum 
+{
+    OLED_SSD1306,
+    OLED_SSD1309
+} OLED_type;
+
+typedef struct
+{
+    const uint8_t *bitmap;
+    uint16_t width;
+    uint16_t height;
+} bitmap;
+
+typedef struct 
+{
+    int16_t origin_x;
+    int16_t origin_y;
+    uint16_t needle_len;
+    int16_t scale_min;
+    int16_t scale_max;
+    int16_t needle_value;
+} analog_gauge;
 
 
 class pico_oled
 {
     private:
+        OLED_type oled_controller;
+        uint8_t reset_gpio;
         uint8_t i2c_addr;
         uint8_t oled_height, oled_width;
         uint8_t *screen_buffer;
@@ -43,10 +65,13 @@ class pico_oled
         uint8_t font_set;
         uint8_t cursor_x;
         uint8_t cursor_y;
+        void (pico_oled::*draw_pixel_fn)(uint8_t, uint8_t);
 
     public:
-        pico_oled(uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height);    
+        pico_oled(OLED_type controller_ic, uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height, uint8_t reset_gpio=64);
         void oled_init();
+        void oled_ssd1306_init();
+        void oled_ssd1309_init();
         void oled_send_cmd(uint8_t cmd);
         void fill(uint8_t fill);
         void all_on(uint8_t disp_on);   
@@ -75,16 +100,18 @@ class pico_oled
         void print_num(const char *format_str, uint8_t print_data);
         void print_num(const char *format_str, int8_t print_data);        
         void draw_pixel(uint8_t x, uint8_t y);
+        void draw_pixel_alternating(uint8_t x, uint8_t y);
         void draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
+        void draw_line_dotted(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
         void draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y);
         void draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x);  
         void draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1); 
-        void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);     
+        void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);   
+        void draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const bitmap full_bitmap, uint8_t x, uint8_t y);
+        void fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
+        void draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)        ;
+
+        uint8_t pixel_counter;
 };
 
-typedef struct
-{
-    const uint8_t *bitmap;
-    uint16_t width;
-    uint16_t height;
-} bitmap;
+

@@ -1,0 +1,14 @@
+#include "pico/stdlib.h"
+
+
+const uint8_t thermometer_empty_width = 8;
+const uint8_t thermometer_empty_height = 20;
+
+const uint8_t thermometer_empty_bitmap [] = 
+{
+    // 'thermometer_empty', 8x20px
+    0x00, 0x24, 0xfe, 0x01, 0x01, 0xfe, 0x24, 0x00, 0xc0, 0x29, 0x1f, 0x00, 0x00, 0x1f, 0x29, 0xc0, 
+    0x03, 0x04, 0x08, 0x08, 0x08, 0x08, 0x04, 0x03
+};
+
+const bitmap thermometer_empty = {(uint8_t *) thermometer_empty_bitmap, thermometer_empty_width, thermometer_empty_height};

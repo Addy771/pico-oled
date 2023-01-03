@@ -9,8 +9,8 @@
 
 #define PRINT_NUM_BUFFER 30     // Length of temporary buffers for printing numbers
 
-// pico-oled constructor
-pico_oled::pico_oled(uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height)
+
+pico_oled::pico_oled(OLED_type controller_ic, uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height, uint8_t reset_gpio)
 {
     // Init private variables
     this->i2c_addr = i2c_address;
@@ -30,6 +30,24 @@ pico_oled::pico_oled(uint8_t i2c_address, uint8_t screen_width, uint8_t screen_h
     // Set cursor default position to something reasonable
     this->cursor_x = 0;
     this->cursor_y = 10;
+
+    // Set the draw pixel function to the default
+    this->draw_pixel_fn = &pico_oled::draw_pixel;
+    this->pixel_counter = 0;
+
+    // Store the controller ID
+    this->oled_controller = controller_ic;
+
+    // Store the reset GPIO 
+    this->reset_gpio = reset_gpio;
+
+    // Initialize reset pin and drive it low if a valid gpio pin was given
+    if (reset_gpio <= 29)
+    {    
+        gpio_init(reset_gpio);
+        gpio_set_dir(reset_gpio, GPIO_OUT);
+        gpio_put(reset_gpio, 0);    // hold display in reset    
+    }
 }
 
 
@@ -48,12 +66,30 @@ void pico_oled::oled_send_cmd(uint8_t cmd)
 // Write to the display's configuration registers to set it up
 void pico_oled::oled_init()
 {
-    // some of these commands are not strictly necessary as the reset
-    // process defaults to some of these but they are shown here
-    // to demonstrate what the initialization sequence looks like
+    // Only use the reset signaling if a valid GPIO pin is selected
+    if (this->reset_gpio <= 29)
+    {
+        sleep_ms(100);      // Wait some time in reset to allow display to stabilize
+        gpio_put(this->reset_gpio, 1);    // take display out of reset
+        sleep_ms(10);        
+    }
 
-    // some configuration values are recommended by the board manufacturer
+    // Run the appropriate init function
+    switch (this->oled_controller)
+    {
+        case OLED_SSD1309:
+            this->oled_ssd1309_init();
+            break;
 
+        case OLED_SSD1306:
+        default:
+            this->oled_ssd1306_init();
+    }
+}
+
+// Set configuration registers for ssd1306 OLED controllers
+void pico_oled::oled_ssd1306_init()
+{
     this->oled_send_cmd(OLED_SET_DISP | 0x00); // set display off
 
     /* memory mapping */
@@ -107,6 +143,67 @@ void pico_oled::oled_init()
     this->render();    
 
     this->oled_send_cmd(OLED_SET_DISP | 0x01); // turn display on
+}
+
+
+// Set configuration registers for ssd1309 OLED controllers
+void pico_oled::oled_ssd1309_init()
+{
+    this->oled_send_cmd(OLED_SET_DISP | 0x00); // set display off
+
+    /* memory mapping */
+    this->oled_send_cmd(OLED_SET_MEM_ADDR); // set memory address mode
+    this->oled_send_cmd(0x00); // horizontal addressing mode 
+
+    /* resolution and layout */
+    this->oled_send_cmd(OLED_SET_DISP_START_LINE); // set display start line to 0
+
+    this->oled_send_cmd(OLED_SET_SEG_REMAP | 0x01); // set segment re-map ssd1306
+    // column address 127 is mapped to SEG0
+
+    this->oled_send_cmd(OLED_SET_COM_OUT_DIR | 0x08); // set COM (common) output scan direction
+    // scan from bottom up, COM[N-1] to COM0
+
+    this->oled_send_cmd(OLED_SET_MUX_RATIO); // set multiplex ratio
+    this->oled_send_cmd(this->oled_height - 1); // set OLED vertical resolution
+
+    this->oled_send_cmd(OLED_SET_DISP_OFFSET); // set display offset
+    this->oled_send_cmd(0x00); // no offset
+
+    this->oled_send_cmd(OLED_SET_COM_PIN_CFG); // set COM (common) pins hardware configuration
+    this->oled_send_cmd(0x12); // 0x12 for alternative COM pin configuration
+
+    /* timing and driving scheme */
+    this->oled_send_cmd(OLED_SET_DISP_CLK_DIV); // set display clock divide ratio 
+    this->oled_send_cmd(0xa0); // div ratio of 1, osc freq 0xA
+    // this->oled_send_cmd(0x70); // div ratio of 1, default freq
+
+    this->oled_send_cmd(OLED_SET_PRECHARGE); // set pre-charge period
+    //this->oled_send_cmd(0xF1); // ssd1309
+    this->oled_send_cmd(0xd3); // ssd1309
+
+    this->oled_send_cmd(OLED_SET_VCOM_DESEL); // set VCOMH deselect level
+    this->oled_send_cmd(0x30);  // 0.83xVcc 
+
+    /* display */
+    this->oled_send_cmd(OLED_SET_CONTRAST); // set contrast control 
+    this->oled_send_cmd(0x0F); // 0 to 255
+
+    this->oled_send_cmd(OLED_SET_ENTIRE_ON); // set entire display on to follow RAM content
+
+    this->oled_send_cmd(OLED_SET_NORM_INV); // set normal (not inverted) display
+
+    this->oled_send_cmd(OLED_SET_CHARGE_PUMP); // set charge pump
+    this->oled_send_cmd(0x10);  // Disabled, external charge pump for ssd1309
+
+    this->oled_send_cmd(OLED_SET_SCROLL | 0x00); // deactivate horizontal scrolling if set
+    // this is necessary as memory writes will corrupt if scrolling was enabled
+
+    // Clear the display
+    this->fill(0);
+    this->render();    
+
+    this->oled_send_cmd(OLED_SET_DISP | 0x01); // turn display on    
 }
 
 
@@ -277,9 +374,6 @@ void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint1
             }
             else
             {
-                //// Offset -3 has problem
-
-
                 // Shift source data by offset_delta so it ends up in the right position
                 // Shift is different when drawing to the same page a second time
                 if (last_screen_page == screen_page)
@@ -459,20 +553,35 @@ void pico_oled::draw_pixel(uint8_t x, uint8_t y)
 }
 
 
+// Draw a single pixel every other time this function is called
+void pico_oled::draw_pixel_alternating(uint8_t x, uint8_t y)
+{
+    if (this->pixel_counter++ > 0)
+    {
+        this->pixel_counter = 0;
+        this->draw_pixel(x, y);
+    }   
+}
+
+
 // Draw a line with Bresenham's algorithm
 void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
-    // Draw straight lines with the fast function instead
-    if (y1 == y2)
+    // Only try to use fast line functions for the default solid line draw_pixel()
+    if (this->draw_pixel_fn == &pico_oled::draw_pixel)
     {
-        this->draw_fast_hline(x1, x2, y1);
-        return;
-    }
+        // Draw straight lines with the fast function instead
+        if (y1 == y2)
+        {
+            this->draw_fast_hline(x1, x2, y1);
+            return;
+        }
 
-    if (x1 == x2)
-    {
-        this->draw_fast_vline(y1, y2, x1);
-        return;
+        if (x1 == x2)
+        {
+            this->draw_fast_vline(y1, y2, x1);
+            return;
+        }
     }
 
     int16_t dx, dy, p;
@@ -522,9 +631,9 @@ void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
     {
         // If slope is less than one, coordinates are swapped
         if (steep)
-            this->draw_pixel(y1, x1);
+            (*this.*draw_pixel_fn)(y1, x1);
         else
-            this->draw_pixel(x1, y1);
+            (*this.*draw_pixel_fn)(x1, y1);
 
         p -= dy;
 
@@ -535,6 +644,17 @@ void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
         }
 
     }
+}
+
+
+// Draw a dotted line by switching out the draw_pixel function
+void pico_oled::draw_line_dotted(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
+{
+    this->pixel_counter = 0;    // Reset pixel counter so that calling this function results in the same kind of line draw each time
+    this->draw_pixel_fn = &pico_oled::draw_pixel_alternating;  // Change the draw pixel function so it only draws every other pixel
+    this->draw_line(x1, y1, x2, y2);
+
+    this->draw_pixel_fn = &pico_oled::draw_pixel;    // Restore the default draw_pixel function
 }
 
 
@@ -551,7 +671,7 @@ void pico_oled::draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y)
     }
 
     // fix coordinates or abort if coordinates are out of bounds
-    if (x1 >= this->oled_width - 1  || y >= this->oled_height - 1)
+    if (x1 >= this->oled_width  || y >= this->oled_height)
         return;    
 
     if (x2 >= this->oled_width)
@@ -580,7 +700,7 @@ void pico_oled::draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x)
     }
 
     // fix coordinates or abort if coordinates are out of bounds
-    if (y1 >= this->oled_height - 1  || x >= this->oled_width - 1)
+    if (y1 >= this->oled_height  || x >= this->oled_width)
         return;    
 
     if (y2 >= this->oled_width)
@@ -620,10 +740,7 @@ void pico_oled::draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, 
     uint8_t filled_px = (fullness * (height - 2)) / 100;
 
     // Draw the outline
-    this->draw_fast_hline(x0, x1, y0);  // Top 
-    this->draw_fast_hline(x0, x1, y1);  // Bottom
-    this->draw_fast_vline(y0, y1, x0);  // Left
-    this->draw_fast_vline(y0, y1, x1);  // Right    
+    this->draw_box(x0, y0, x1, y1); 
 
     // Draw lines to fill the internal area
     for (uint8_t y_line = y1 - 1; y_line >= (y1 - 1) - filled_px; y_line--)
@@ -639,10 +756,7 @@ void pico_oled::draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uin
     uint8_t filled_px = (fullness * (width - 2)) / 100;
 
     // Draw the outline
-    this->draw_fast_hline(x0, x1, y0);  // Top 
-    this->draw_fast_hline(x0, x1, y1);  // Bottom
-    this->draw_fast_vline(y0, y1, x0);  // Left
-    this->draw_fast_vline(y0, y1, x1);  // Right    
+    this->draw_box(x0, y0, x1, y1);
 
     // Draw lines to fill the internal area
     if (start_right)
@@ -656,3 +770,82 @@ void pico_oled::draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uin
             this->draw_fast_vline(y0 + 1, y1 - 1, x_line);
     }
 }
+
+
+/* Draw a vertical, bitmapped progress bar.
+ * empty_bitmap: bitmap of the bar (empty frame) when it is 0% full
+ * full_bitmap: bitmap of the bar (with or without frame) when it is 100% full.
+*/
+void pico_oled::draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const bitmap full_bitmap, uint8_t x, uint8_t y)
+{
+    uint8_t filled_px = (fullness * empty_bitmap.height) / 100;   // This assumes the active area is the whole bar bmp, including frame
+
+    // Draw the empty frame 
+    this->blit_screen(empty_bitmap.bitmap, empty_bitmap.width, 0, 0, empty_bitmap.width, empty_bitmap.height, x, y);
+
+    // Draw as much of the full bitmap that would be proportional to fullness (from the bottom)
+    this->blit_screen(full_bitmap.bitmap, full_bitmap.width, 0, full_bitmap.height - filled_px, full_bitmap.width, filled_px, x, y + (full_bitmap.height - filled_px));
+
+}
+
+
+/* Solid fill a rectangular region. 
+ * blank: if true, rectangle will be cleared (off) instead of filled
+*/
+void pico_oled::fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
+{
+    // Switch coordinates around so that y1 < y2
+    if (y1 > y2)
+    {
+        uint8_t tmp;
+        tmp = x1;   // Save x1
+        x1 = x2;    // x2 -> x1
+        x2 = tmp;   // x1 -> x2
+
+        tmp = y1;   // Save y1
+        y1 = y2;    // y2 -> y1
+        y2 = tmp;   // y1 -> y2
+    }    
+
+    uint8_t start_page = y1 / OLED_PAGE_HEIGHT;
+    uint8_t end_page = y2 / OLED_PAGE_HEIGHT;    
+    uint8_t col_mask;
+
+    for (uint8_t page = start_page; page <= end_page; page++)
+    {
+        for(uint8_t column = x1; column != x2; (x1 <= x2) ? ++column : --column)
+        {
+            col_mask = 0xFF;
+
+            // For the first page, we may not need to fill every pixel
+            if (page == start_page)
+                col_mask &= 0xFF << (y1 - page*OLED_PAGE_HEIGHT);   // Shift zeros into LSBs
+
+            // For the last page, we may not need to fill every pixel
+            if (page == end_page)
+                col_mask &= 0xFF >> (y2 - page*OLED_PAGE_HEIGHT);   // Shift zeros into MSBs
+            
+            // Modify the screen contents according to the specified mode
+            if (blank)
+                this->screen_buffer[1 + column + page*this->oled_width] &= ~col_mask;
+            else
+                this->screen_buffer[1 + column + page*this->oled_width] |= col_mask;
+        }
+    }
+}
+
+
+// Draw a box outline at the given coordinates
+void pico_oled::draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
+{
+    this->draw_fast_hline(x0, x1, y0);  // Top 
+    this->draw_fast_hline(x0, x1, y1);  // Bottom
+    this->draw_fast_vline(y0, y1, x0);  // Left
+    this->draw_fast_vline(y0, y1, x1);  // Right       
+}
+
+
+// x = r*cos(th)
+// y = r*sin(th)
+// th = atan(y/x)
+// r = sqrt(x^2 + y^2)
