@@ -3,7 +3,9 @@
 #include "pico/stdlib.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "pico/float.h"
 #include "gfx_font.h"
+
 
 //#define GFX_DEBUG
 
@@ -13,40 +15,40 @@
 pico_oled::pico_oled(OLED_type controller_ic, uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height, uint8_t reset_gpio)
 {
     // Init private variables
-    this->i2c_addr = i2c_address;
-    this->oled_width = screen_width;
-    this->oled_height = screen_height;
+    i2c_addr = i2c_address;
+    oled_width = screen_width;
+    oled_height = screen_height;
 
     // Allocate a buffer for the entire screen + control byte
-    this->screen_buf_length = (oled_height / OLED_PAGE_HEIGHT) * oled_width + 1;
-    this->screen_buffer = (uint8_t*) malloc(this->screen_buf_length);
+    screen_buf_length = (oled_height / OLED_PAGE_HEIGHT) * oled_width + 1;
+    screen_buffer = (uint8_t*) malloc(screen_buf_length);
 
     // Control byte, Co = 0, D/C = 1 => the driver expects data to be written to RAM
-    this->screen_buffer[0] = 0x40;  
+    screen_buffer[0] = 0x40;  
 
     // Indicate that font has not been set yet
-    this->font_set = 0;
+    font_set = 0;
 
     // Set cursor default position to something reasonable
-    this->cursor_x = 0;
-    this->cursor_y = 10;
+    cursor_x = 0;
+    cursor_y = 10;
 
     // Set the draw pixel function to the default
-    this->draw_pixel_fn = &pico_oled::draw_pixel;
-    this->pixel_counter = 0;
+    draw_pixel_fn = &pico_oled::draw_pixel;
+    pixel_counter = 0;
 
     // Store the controller ID
-    this->oled_controller = controller_ic;
+    oled_controller = controller_ic;
 
     // Store the reset GPIO 
-    this->reset_gpio = reset_gpio;
+    rst_gpio = reset_gpio;
 
     // Initialize reset pin and drive it low if a valid gpio pin was given
-    if (reset_gpio <= 29)
+    if (rst_gpio <= 29)
     {    
-        gpio_init(reset_gpio);
-        gpio_set_dir(reset_gpio, GPIO_OUT);
-        gpio_put(reset_gpio, 0);    // hold display in reset    
+        gpio_init(rst_gpio);
+        gpio_set_dir(rst_gpio, GPIO_OUT);
+        gpio_put(rst_gpio, 0);    // hold display in reset    
     }
 }
 
@@ -59,7 +61,7 @@ void pico_oled::oled_send_cmd(uint8_t cmd)
 
     // Co = 1, D/C = 0 => the driver expects a command
     uint8_t buf[2] = {0x80, cmd};
-    i2c_write_blocking(i2c_default, (this->i2c_addr & OLED_WRITE_MODE), buf, 2, false);   
+    i2c_write_blocking(i2c_default, (i2c_addr & OLED_WRITE_MODE), buf, 2, false);   
 }
 
 
@@ -67,143 +69,143 @@ void pico_oled::oled_send_cmd(uint8_t cmd)
 void pico_oled::oled_init()
 {
     // Only use the reset signaling if a valid GPIO pin is selected
-    if (this->reset_gpio <= 29)
+    if (rst_gpio <= 29)
     {
         sleep_ms(100);      // Wait some time in reset to allow display to stabilize
-        gpio_put(this->reset_gpio, 1);    // take display out of reset
+        gpio_put(rst_gpio, 1);    // take display out of reset
         sleep_ms(10);        
     }
 
     // Run the appropriate init function
-    switch (this->oled_controller)
+    switch (oled_controller)
     {
         case OLED_SSD1309:
-            this->oled_ssd1309_init();
+            oled_ssd1309_init();
             break;
 
         case OLED_SSD1306:
         default:
-            this->oled_ssd1306_init();
+            oled_ssd1306_init();
     }
 }
 
 // Set configuration registers for ssd1306 OLED controllers
 void pico_oled::oled_ssd1306_init()
 {
-    this->oled_send_cmd(OLED_SET_DISP | 0x00); // set display off
+    oled_send_cmd(OLED_SET_DISP | 0x00); // set display off
 
     /* memory mapping */
-    this->oled_send_cmd(OLED_SET_MEM_ADDR); // set memory address mode
-    this->oled_send_cmd(0x00); // horizontal addressing mode
+    oled_send_cmd(OLED_SET_MEM_ADDR); // set memory address mode
+    oled_send_cmd(0x00); // horizontal addressing mode
 
     /* resolution and layout */
-    this->oled_send_cmd(OLED_SET_DISP_START_LINE); // set display start line to 0
+    oled_send_cmd(OLED_SET_DISP_START_LINE); // set display start line to 0
 
-    this->oled_send_cmd(OLED_SET_SEG_REMAP | 0x01); // set segment re-map
+    oled_send_cmd(OLED_SET_SEG_REMAP | 0x01); // set segment re-map
     // column address 127 is mapped to SEG0
 
-    this->oled_send_cmd(OLED_SET_MUX_RATIO); // set multiplex ratio
-    this->oled_send_cmd(this->oled_height - 1); // set OLED vertical resolution
+    oled_send_cmd(OLED_SET_MUX_RATIO); // set multiplex ratio
+    oled_send_cmd(oled_height - 1); // set OLED vertical resolution
 
-    this->oled_send_cmd(OLED_SET_COM_OUT_DIR | 0x08); // set COM (common) output scan direction
+    oled_send_cmd(OLED_SET_COM_OUT_DIR | 0x08); // set COM (common) output scan direction
     // scan from bottom up, COM[N-1] to COM0
 
-    this->oled_send_cmd(OLED_SET_DISP_OFFSET); // set display offset
-    this->oled_send_cmd(0x00); // no offset
+    oled_send_cmd(OLED_SET_DISP_OFFSET); // set display offset
+    oled_send_cmd(0x00); // no offset
 
-    this->oled_send_cmd(OLED_SET_COM_PIN_CFG); // set COM (common) pins hardware configuration
-    this->oled_send_cmd(0x12); // 0x12 for alternative COM pin configuration
+    oled_send_cmd(OLED_SET_COM_PIN_CFG); // set COM (common) pins hardware configuration
+    oled_send_cmd(0x12); // 0x12 for alternative COM pin configuration
 
     /* timing and driving scheme */
-    this->oled_send_cmd(OLED_SET_DISP_CLK_DIV); // set display clock divide ratio 
-    this->oled_send_cmd(0x80); // div ratio of 1, standard freq
+    oled_send_cmd(OLED_SET_DISP_CLK_DIV); // set display clock divide ratio 
+    oled_send_cmd(0x80); // div ratio of 1, standard freq
 
-    this->oled_send_cmd(OLED_SET_PRECHARGE); // set pre-charge period
-    this->oled_send_cmd(0xF1); // Vcc internally generated on our board
+    oled_send_cmd(OLED_SET_PRECHARGE); // set pre-charge period
+    oled_send_cmd(0xF1); // Vcc internally generated on our board
 
-    this->oled_send_cmd(OLED_SET_VCOM_DESEL); // set VCOMH deselect level
-    this->oled_send_cmd(0x30); // 0.83xVcc  
+    oled_send_cmd(OLED_SET_VCOM_DESEL); // set VCOMH deselect level
+    oled_send_cmd(0x30); // 0.83xVcc  
 
     /* display */
-    this->oled_send_cmd(OLED_SET_CONTRAST); // set contrast control 
-    this->oled_send_cmd(0x0F); // 0 to 255
+    oled_send_cmd(OLED_SET_CONTRAST); // set contrast control 
+    oled_send_cmd(0x0F); // 0 to 255
 
-    this->oled_send_cmd(OLED_SET_ENTIRE_ON); // set entire display on to follow RAM content
+    oled_send_cmd(OLED_SET_ENTIRE_ON); // set entire display on to follow RAM content
 
-    this->oled_send_cmd(OLED_SET_NORM_INV); // set normal (not inverted) display
+    oled_send_cmd(OLED_SET_NORM_INV); // set normal (not inverted) display
 
-    this->oled_send_cmd(OLED_SET_CHARGE_PUMP); // set charge pump
-    this->oled_send_cmd(0x14); // Vcc internally generated on our board
+    oled_send_cmd(OLED_SET_CHARGE_PUMP); // set charge pump
+    oled_send_cmd(0x14); // Vcc internally generated on our board
 
-    this->oled_send_cmd(OLED_SET_SCROLL | 0x00); // deactivate horizontal scrolling if set
+    oled_send_cmd(OLED_SET_SCROLL | 0x00); // deactivate horizontal scrolling if set
     // this is necessary as memory writes will corrupt if scrolling was enabled
 
     // Clear the display
-    this->fill(0);
-    this->render();    
+    fill(0);
+    render();    
 
-    this->oled_send_cmd(OLED_SET_DISP | 0x01); // turn display on
+    oled_send_cmd(OLED_SET_DISP | 0x01); // turn display on
 }
 
 
 // Set configuration registers for ssd1309 OLED controllers
 void pico_oled::oled_ssd1309_init()
 {
-    this->oled_send_cmd(OLED_SET_DISP | 0x00); // set display off
+    oled_send_cmd(OLED_SET_DISP | 0x00); // set display off
 
     /* memory mapping */
-    this->oled_send_cmd(OLED_SET_MEM_ADDR); // set memory address mode
-    this->oled_send_cmd(0x00); // horizontal addressing mode 
+    oled_send_cmd(OLED_SET_MEM_ADDR); // set memory address mode
+    oled_send_cmd(0x00); // horizontal addressing mode 
 
     /* resolution and layout */
-    this->oled_send_cmd(OLED_SET_DISP_START_LINE); // set display start line to 0
+    oled_send_cmd(OLED_SET_DISP_START_LINE); // set display start line to 0
 
-    this->oled_send_cmd(OLED_SET_SEG_REMAP | 0x01); // set segment re-map ssd1306
+    oled_send_cmd(OLED_SET_SEG_REMAP | 0x01); // set segment re-map ssd1306
     // column address 127 is mapped to SEG0
 
-    this->oled_send_cmd(OLED_SET_COM_OUT_DIR | 0x08); // set COM (common) output scan direction
+    oled_send_cmd(OLED_SET_COM_OUT_DIR | 0x08); // set COM (common) output scan direction
     // scan from bottom up, COM[N-1] to COM0
 
-    this->oled_send_cmd(OLED_SET_MUX_RATIO); // set multiplex ratio
-    this->oled_send_cmd(this->oled_height - 1); // set OLED vertical resolution
+    oled_send_cmd(OLED_SET_MUX_RATIO); // set multiplex ratio
+    oled_send_cmd(oled_height - 1); // set OLED vertical resolution
 
-    this->oled_send_cmd(OLED_SET_DISP_OFFSET); // set display offset
-    this->oled_send_cmd(0x00); // no offset
+    oled_send_cmd(OLED_SET_DISP_OFFSET); // set display offset
+    oled_send_cmd(0x00); // no offset
 
-    this->oled_send_cmd(OLED_SET_COM_PIN_CFG); // set COM (common) pins hardware configuration
-    this->oled_send_cmd(0x12); // 0x12 for alternative COM pin configuration
+    oled_send_cmd(OLED_SET_COM_PIN_CFG); // set COM (common) pins hardware configuration
+    oled_send_cmd(0x12); // 0x12 for alternative COM pin configuration
 
     /* timing and driving scheme */
-    this->oled_send_cmd(OLED_SET_DISP_CLK_DIV); // set display clock divide ratio 
-    this->oled_send_cmd(0xa0); // div ratio of 1, osc freq 0xA
-    // this->oled_send_cmd(0x70); // div ratio of 1, default freq
+    oled_send_cmd(OLED_SET_DISP_CLK_DIV); // set display clock divide ratio 
+    oled_send_cmd(0xa0); // div ratio of 1, osc freq 0xA
+    // oled_send_cmd(0x70); // div ratio of 1, default freq
 
-    this->oled_send_cmd(OLED_SET_PRECHARGE); // set pre-charge period
-    //this->oled_send_cmd(0xF1); // ssd1309
-    this->oled_send_cmd(0xd3); // ssd1309
+    oled_send_cmd(OLED_SET_PRECHARGE); // set pre-charge period
+    //oled_send_cmd(0xF1); // ssd1309
+    oled_send_cmd(0xd3); // ssd1309
 
-    this->oled_send_cmd(OLED_SET_VCOM_DESEL); // set VCOMH deselect level
-    this->oled_send_cmd(0x30);  // 0.83xVcc 
+    oled_send_cmd(OLED_SET_VCOM_DESEL); // set VCOMH deselect level
+    oled_send_cmd(0x30);  // 0.83xVcc 
 
     /* display */
-    this->oled_send_cmd(OLED_SET_CONTRAST); // set contrast control 
-    this->oled_send_cmd(0x0F); // 0 to 255
+    oled_send_cmd(OLED_SET_CONTRAST); // set contrast control 
+    oled_send_cmd(0x0F); // 0 to 255
 
-    this->oled_send_cmd(OLED_SET_ENTIRE_ON); // set entire display on to follow RAM content
+    oled_send_cmd(OLED_SET_ENTIRE_ON); // set entire display on to follow RAM content
 
-    this->oled_send_cmd(OLED_SET_NORM_INV); // set normal (not inverted) display
+    oled_send_cmd(OLED_SET_NORM_INV); // set normal (not inverted) display
 
-    this->oled_send_cmd(OLED_SET_CHARGE_PUMP); // set charge pump
-    this->oled_send_cmd(0x10);  // Disabled, external charge pump for ssd1309
+    oled_send_cmd(OLED_SET_CHARGE_PUMP); // set charge pump
+    oled_send_cmd(0x10);  // Disabled, external charge pump for ssd1309
 
-    this->oled_send_cmd(OLED_SET_SCROLL | 0x00); // deactivate horizontal scrolling if set
+    oled_send_cmd(OLED_SET_SCROLL | 0x00); // deactivate horizontal scrolling if set
     // this is necessary as memory writes will corrupt if scrolling was enabled
 
     // Clear the display
-    this->fill(0);
-    this->render();    
+    fill(0);
+    render();    
 
-    this->oled_send_cmd(OLED_SET_DISP | 0x01); // turn display on    
+    oled_send_cmd(OLED_SET_DISP | 0x01); // turn display on    
 }
 
 
@@ -211,9 +213,9 @@ void pico_oled::oled_ssd1309_init()
 void pico_oled::fill(uint8_t fill)
 {
     // Skip first byte since it's a control byte
-    for (int i=1; i < this->screen_buf_length; i++)
+    for (int i=1; i < screen_buf_length; i++)
     {
-        this->screen_buffer[i] = fill;
+        screen_buffer[i] = fill;
     }
 }
 
@@ -224,13 +226,13 @@ void pico_oled::render()
     // Set the start/end coordinates for drawing the entire screen
     oled_send_cmd(OLED_SET_COL_ADDR);
     oled_send_cmd(0);                       // Start column
-    oled_send_cmd(this->oled_width - 1);    // End column
+    oled_send_cmd(oled_width - 1);    // End column
 
     oled_send_cmd(OLED_SET_PAGE_ADDR);
     oled_send_cmd(0);                                           // Start page
-    oled_send_cmd(this->oled_height / OLED_PAGE_HEIGHT - 1);    // End page
+    oled_send_cmd(oled_height / OLED_PAGE_HEIGHT - 1);    // End page
 
-    i2c_write_blocking(i2c_default, (this->i2c_addr & OLED_WRITE_MODE), this->screen_buffer, this->screen_buf_length, false);
+    i2c_write_blocking(i2c_default, (i2c_addr & OLED_WRITE_MODE), screen_buffer, screen_buf_length, false);
 }
 
 
@@ -238,9 +240,9 @@ void pico_oled::render()
 void pico_oled::all_on(uint8_t disp_on)
 {
     if (disp_on)
-        this->oled_send_cmd(0xA5);
+        oled_send_cmd(0xA5);
     else
-        this->oled_send_cmd(0xA4);
+        oled_send_cmd(0xA4);
 }
 
 
@@ -260,14 +262,14 @@ void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint1
     printf("\n\nBeginning blit of bitmap of %dx%d, from source pos %d,%d to screen position %d,%d\n", blit_width, blit_height, src_x, src_y, screen_x, screen_y);
 #endif
     // Make sure drawing happens within screen bounds
-    if (dest_end_page > (this->oled_height / OLED_PAGE_HEIGHT))  
+    if (dest_end_page > (oled_height / OLED_PAGE_HEIGHT))  
     {
-        dest_end_page = (this->oled_height / OLED_PAGE_HEIGHT);
+        dest_end_page = (oled_height / OLED_PAGE_HEIGHT);
     }
 
-    if (dest_end_col > this->oled_width - 1)
+    if (dest_end_col > oled_width - 1)
     {
-        dest_end_col = this->oled_width - 1;
+        dest_end_col = oled_width - 1;
     }
 
     // Make sure source data is within source bitmap bounds
@@ -328,7 +330,7 @@ void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint1
 
 #ifdef GFX_DEBUG
         // // DEBUG stuff
-        // this->render();
+        // render();
         // sleep_ms(100);
         printf("screen pg:%d line:%d, src pg:%d line:%d, drawable:%d, available:%d, u_mask:%d, l_mask:%d\n", screen_page, screen_line, src_page, src_line, lines_drawable, lines_available, u_mask, l_mask);
         // //printf("last_src_page: %d, src_page %d\n", last_src_page, src_page);
@@ -360,7 +362,7 @@ void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint1
                         source_data &= 0xFF >> mask_amt;  
 
                     // bottom pixels being shifted up
-                    this->screen_buffer[1 + column + screen_page*this->oled_width] |= source_data >> (OLED_PAGE_HEIGHT - offset_delta);
+                    screen_buffer[1 + column + screen_page*oled_width] |= source_data >> (OLED_PAGE_HEIGHT - offset_delta);
                 }
                 else
                 {
@@ -369,7 +371,7 @@ void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint1
                     source_data &= 0xFF >> u_mask;
 
                     // top pixels being shifted down
-                    this->screen_buffer[1 + column + screen_page*this->oled_width] |= source_data << offset_delta;
+                    screen_buffer[1 + column + screen_page*oled_width] |= source_data << offset_delta;
                 }
             }
             else
@@ -387,7 +389,7 @@ void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint1
                     }
                     
                     // top pixels being shifted down
-                    this->screen_buffer[1 + column + screen_page*this->oled_width] |= source_data << (OLED_PAGE_HEIGHT + offset_delta); // page height - offset
+                    screen_buffer[1 + column + screen_page*oled_width] |= source_data << (OLED_PAGE_HEIGHT + offset_delta); // page height - offset
                 }
                 else
                 {
@@ -401,7 +403,7 @@ void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint1
                     }
 
                     // bottom pixels being shifted up
-                    this->screen_buffer[1 + column + screen_page*this->oled_width] |= source_data >> (-1 * offset_delta);
+                    screen_buffer[1 + column + screen_page*oled_width] |= source_data >> (-1 * offset_delta);
                 }
             }
             
@@ -430,10 +432,10 @@ void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint1
 
 
 // Set the font for future text drawing
-void pico_oled::set_font(gfx_font font)
+void pico_oled::set_font(gfx_font new_font)
 {
-    this->font = font;
-    this->font_set = 1;
+    font = new_font;
+    font_set = 1;
 }
 
 
@@ -441,16 +443,16 @@ void pico_oled::set_font(gfx_font font)
 void pico_oled::draw_char(uint8_t char_c, uint8_t x_pos, uint8_t y_pos)
 {
     // Abort if the char is not within the drawable range
-    // if (char_c > this->font.last || char_c < this->font.first)
+    // if (char_c > font.last || char_c < font.first)
     //     return;
 
 #ifdef GFX_DEBUG            
-    printf("Character: %c, src_x: %d\n", char_c, this->font.character[char_c].bitmap_x);
+    printf("Character: %c, src_x: %d\n", char_c, font.character[char_c].bitmap_x);
 #endif
     
-    char_c -= this->font.first;     // First character is element 0 of table
+    char_c -= font.first;     // First character is element 0 of table
     
-    this->blit_screen(this->font.bitmap, this->font.src_width, this->font.character[char_c].bitmap_x, 0, this->font.character[char_c].width, this->font.character[char_c].height, x_pos + this->font.character[char_c].x_offset, y_pos + this->font.character[char_c].y_offset);
+    blit_screen(font.bitmap, font.src_width, font.character[char_c].bitmap_x, 0, font.character[char_c].width, font.character[char_c].height, x_pos + font.character[char_c].x_offset, y_pos + font.character[char_c].y_offset);
 }
 
 
@@ -458,31 +460,31 @@ void pico_oled::draw_char(uint8_t char_c, uint8_t x_pos, uint8_t y_pos)
 void pico_oled::print(const char *print_str)
 {
     // Abort if no font has been set yet
-    if (!this->font_set)
+    if (!font_set)
         return;
 
     while (*print_str != '\0')
     {
         // Draw character if it's valid
-        if (*print_str <= this->font.last && *print_str >= this->font.first)
+        if (*print_str <= font.last && *print_str >= font.first)
         {
             // If character would be drawn over the edge of the screen
-            if (this->font.character[*print_str - this->font.first].width + this->cursor_x >= this->oled_width)
+            if (font.character[*print_str - font.first].width + cursor_x >= oled_width)
             {      
                 // Reposition cursor at the left edge of the screen, one line down
-                this->cursor_x = 0;
-                this->cursor_y += this->font.line_height;
+                cursor_x = 0;
+                cursor_y += font.line_height;
             }
             
-            this->draw_char(*print_str, this->cursor_x, this->cursor_y);
+            draw_char(*print_str, cursor_x, cursor_y);
 
-            this->cursor_x += this->font.character[*print_str - this->font.first].x_advance;
+            cursor_x += font.character[*print_str - font.first].x_advance;
         }
         else if (*print_str == '\n')
         {
             // Reposition cursor at the left edge of the screen, one line down
-            this->cursor_x = 0;
-            this->cursor_y += this->font.line_height;            
+            cursor_x = 0;
+            cursor_y += font.line_height;            
         }
 
         print_str++;
@@ -497,7 +499,7 @@ void pico_oled::print_num(const char *format_str, int32_t print_data)
     // Allocate a buffer big enough to hold the printed data
     char output_buf[PRINT_NUM_BUFFER];
     sprintf(output_buf, format_str, print_data);
-    this->print(output_buf);
+    print(output_buf);
 }
 
 
@@ -506,7 +508,7 @@ void pico_oled::print_num(const char *format_str, uint32_t print_data)
     // Allocate a buffer big enough to hold the printed data
     char output_buf[PRINT_NUM_BUFFER];
     sprintf(output_buf, format_str, print_data);
-    this->print(output_buf);
+    print(output_buf);
 }
 
 
@@ -515,27 +517,27 @@ void pico_oled::print_num(const char *format_str, float print_data)
     // Allocate a buffer big enough to hold the printed data
     char output_buf[PRINT_NUM_BUFFER];
     sprintf(output_buf, format_str, print_data);
-    this->print(output_buf);
+    print(output_buf);
 }
 
 void pico_oled::print_num(const char *format_str, uint8_t print_data)
 {
-    this->print_num(format_str, (uint32_t) print_data);
+    print_num(format_str, (uint32_t) print_data);
 }
 
 void pico_oled::print_num(const char *format_str, int8_t print_data)
 {
-    this->print_num(format_str, (int32_t) print_data);
+    print_num(format_str, (int32_t) print_data);
 }
 
 void pico_oled::print_num(const char *format_str, uint16_t print_data)
 {
-    this->print_num(format_str, (uint32_t) print_data);
+    print_num(format_str, (uint32_t) print_data);
 }
 
 void pico_oled::print_num(const char *format_str, int16_t print_data)
 {
-    this->print_num(format_str, (int32_t) print_data);
+    print_num(format_str, (int32_t) print_data);
 }
 
 
@@ -543,23 +545,23 @@ void pico_oled::print_num(const char *format_str, int16_t print_data)
 void pico_oled::draw_pixel(uint8_t x, uint8_t y)
 {
     // Abort if coordinates are out of bounds
-    if (x >= this->oled_width || y >= this->oled_height)
+    if (x >= oled_width || y >= oled_height)
         return;
 
     uint8_t screen_page = y / OLED_PAGE_HEIGHT;
 
     // Write to the column where the target pixel is
-    this->screen_buffer[1 + x + screen_page*this->oled_width] |= 1 << (y - screen_page*OLED_PAGE_HEIGHT);
+    screen_buffer[1 + x + screen_page*oled_width] |= 1 << (y - screen_page*OLED_PAGE_HEIGHT);
 }
 
 
 // Draw a single pixel every other time this function is called
 void pico_oled::draw_pixel_alternating(uint8_t x, uint8_t y)
 {
-    if (this->pixel_counter++ > 0)
+    if (pixel_counter++ > 0)
     {
-        this->pixel_counter = 0;
-        this->draw_pixel(x, y);
+        pixel_counter = 0;
+        draw_pixel(x, y);
     }   
 }
 
@@ -568,18 +570,18 @@ void pico_oled::draw_pixel_alternating(uint8_t x, uint8_t y)
 void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
     // Only try to use fast line functions for the default solid line draw_pixel()
-    if (this->draw_pixel_fn == &pico_oled::draw_pixel)
+    if (draw_pixel_fn == &pico_oled::draw_pixel)
     {
         // Draw straight lines with the fast function instead
         if (y1 == y2)
         {
-            this->draw_fast_hline(x1, x2, y1);
+            draw_fast_hline(x1, x2, y1);
             return;
         }
 
         if (x1 == x2)
         {
-            this->draw_fast_vline(y1, y2, x1);
+            draw_fast_vline(y1, y2, x1);
             return;
         }
     }
@@ -632,6 +634,7 @@ void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
         // If slope is less than one, coordinates are swapped
         if (steep)
             (*this.*draw_pixel_fn)(y1, x1);
+
         else
             (*this.*draw_pixel_fn)(x1, y1);
 
@@ -650,11 +653,12 @@ void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 // Draw a dotted line by switching out the draw_pixel function
 void pico_oled::draw_line_dotted(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
-    this->pixel_counter = 0;    // Reset pixel counter so that calling this function results in the same kind of line draw each time
-    this->draw_pixel_fn = &pico_oled::draw_pixel_alternating;  // Change the draw pixel function so it only draws every other pixel
-    this->draw_line(x1, y1, x2, y2);
+    pixel_counter = 0;    // Reset pixel counter so that calling this function results in the same kind of line draw each time
+    draw_pixel_fn = &pico_oled::draw_pixel_alternating;  // Change the draw pixel function so it only draws every other pixel
 
-    this->draw_pixel_fn = &pico_oled::draw_pixel;    // Restore the default draw_pixel function
+    draw_line(x1, y1, x2, y2);
+
+    draw_pixel_fn = &pico_oled::draw_pixel;    // Restore the default draw_pixel function
 }
 
 
@@ -671,11 +675,11 @@ void pico_oled::draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y)
     }
 
     // fix coordinates or abort if coordinates are out of bounds
-    if (x1 >= this->oled_width  || y >= this->oled_height)
+    if (x1 >= oled_width  || y >= oled_height)
         return;    
 
-    if (x2 >= this->oled_width)
-        x2 = this->oled_width - 1;
+    if (x2 >= oled_width)
+        x2 = oled_width - 1;
 
     uint8_t screen_page = y / OLED_PAGE_HEIGHT;
     uint8_t mask = 1 << (y - screen_page*OLED_PAGE_HEIGHT);
@@ -683,7 +687,7 @@ void pico_oled::draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y)
     for (; x1 <= x2; x1++)
     {
         // Write to the column where the target pixel is
-        this->screen_buffer[1 + x1 + screen_page*this->oled_width] |= mask;    
+        screen_buffer[1 + x1 + screen_page*oled_width] |= mask;    
     }
 }
 
@@ -700,11 +704,11 @@ void pico_oled::draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x)
     }
 
     // fix coordinates or abort if coordinates are out of bounds
-    if (y1 >= this->oled_height  || x >= this->oled_width)
+    if (y1 >= oled_height  || x >= oled_width)
         return;    
 
-    if (y2 >= this->oled_width)
-        y2 = this->oled_width - 1;
+    if (y2 >= oled_width)
+        y2 = oled_width - 1;
 
     uint8_t first_page = y1 / OLED_PAGE_HEIGHT;    
     uint8_t last_page = y2 / OLED_PAGE_HEIGHT;
@@ -726,7 +730,7 @@ void pico_oled::draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x)
         }
 
         // Draw current page
-        this->screen_buffer[1 + x + page*this->oled_width] |= mask; 
+        screen_buffer[1 + x + page*oled_width] |= mask; 
     }
 
 }
@@ -740,11 +744,11 @@ void pico_oled::draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, 
     uint8_t filled_px = (fullness * (height - 2)) / 100;
 
     // Draw the outline
-    this->draw_box(x0, y0, x1, y1); 
+    draw_box(x0, y0, x1, y1); 
 
     // Draw lines to fill the internal area
     for (uint8_t y_line = y1 - 1; y_line >= (y1 - 1) - filled_px; y_line--)
-        this->draw_fast_hline(x0 + 1, x1 - 1, y_line);
+        draw_fast_hline(x0 + 1, x1 - 1, y_line);
 }
 
 
@@ -756,18 +760,18 @@ void pico_oled::draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uin
     uint8_t filled_px = (fullness * (width - 2)) / 100;
 
     // Draw the outline
-    this->draw_box(x0, y0, x1, y1);
+    draw_box(x0, y0, x1, y1);
 
     // Draw lines to fill the internal area
     if (start_right)
     {
         for (uint8_t x_line = x1 - 1; x_line >= (x1 - 1) - filled_px; x_line--)
-            this->draw_fast_vline(y0 + 1, y1 - 1, x_line);
+            draw_fast_vline(y0 + 1, y1 - 1, x_line);
     }
     else
     {
         for (uint8_t x_line = x0 + 1; x_line <= (x0 + 1) + filled_px; x_line++)
-            this->draw_fast_vline(y0 + 1, y1 - 1, x_line);
+            draw_fast_vline(y0 + 1, y1 - 1, x_line);
     }
 }
 
@@ -781,10 +785,10 @@ void pico_oled::draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const
     uint8_t filled_px = (fullness * empty_bitmap.height) / 100;   // This assumes the active area is the whole bar bmp, including frame
 
     // Draw the empty frame 
-    this->blit_screen(empty_bitmap.bitmap, empty_bitmap.width, 0, 0, empty_bitmap.width, empty_bitmap.height, x, y);
+    blit_screen(empty_bitmap.bitmap, empty_bitmap.width, 0, 0, empty_bitmap.width, empty_bitmap.height, x, y);
 
     // Draw as much of the full bitmap that would be proportional to fullness (from the bottom)
-    this->blit_screen(full_bitmap.bitmap, full_bitmap.width, 0, full_bitmap.height - filled_px, full_bitmap.width, filled_px, x, y + (full_bitmap.height - filled_px));
+    blit_screen(full_bitmap.bitmap, full_bitmap.width, 0, full_bitmap.height - filled_px, full_bitmap.width, filled_px, x, y + (full_bitmap.height - filled_px));
 
 }
 
@@ -827,9 +831,9 @@ void pico_oled::fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uin
             
             // Modify the screen contents according to the specified mode
             if (blank)
-                this->screen_buffer[1 + column + page*this->oled_width] &= ~col_mask;
+                screen_buffer[1 + column + page*oled_width] &= ~col_mask;
             else
-                this->screen_buffer[1 + column + page*this->oled_width] |= col_mask;
+                screen_buffer[1 + column + page*oled_width] |= col_mask;
         }
     }
 }
@@ -838,10 +842,10 @@ void pico_oled::fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uin
 // Draw a box outline at the given coordinates
 void pico_oled::draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
 {
-    this->draw_fast_hline(x0, x1, y0);  // Top 
-    this->draw_fast_hline(x0, x1, y1);  // Bottom
-    this->draw_fast_vline(y0, y1, x0);  // Left
-    this->draw_fast_vline(y0, y1, x1);  // Right       
+    draw_fast_hline(x0, x1, y0);  // Top 
+    draw_fast_hline(x0, x1, y1);  // Bottom
+    draw_fast_vline(y0, y1, x0);  // Left
+    draw_fast_vline(y0, y1, x1);  // Right       
 }
 
 
@@ -849,3 +853,48 @@ void pico_oled::draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
 // y = r*sin(th)
 // th = atan(y/x)
 // r = sqrt(x^2 + y^2)
+
+
+void pico_oled::draw_line_polar(uint8_t origin_x, uint8_t origin_y, uint8_t magnitude, float angle)
+{
+    float end_x, end_y;
+
+    // Convert degrees to radians
+    angle = (angle / 360) * 2*M_PI;
+
+    // Convert polar to rect
+    sincosf(angle, &end_y, &end_x);
+    end_x = end_x * magnitude + origin_x;
+    end_y = end_y * magnitude + origin_y;
+
+    draw_line(origin_x, origin_y, end_x, end_y);
+}
+
+
+analog_gauge::analog_gauge(pico_oled *display)
+{
+    master_display = display;
+
+    // Set variables to reasonable defaults
+    origin_x = 63;
+    origin_y = 63;
+    needle_len = 15;
+    marker_len = 5;
+    scale_min = 0;
+    scale_max = 100;
+    scale_start_deg = 220;
+    scale_end_deg = 320;
+    needle_value = 50;
+}
+
+
+// Draw the gauge using the parameters provided within the class
+void analog_gauge::draw()
+{
+    // Draw scale divisions
+
+    // Draw needle line
+    float needle_angle = (scale_end_deg - scale_start_deg) * (needle_value - scale_min) / (scale_max - scale_min);
+
+    master_display->draw_line_polar(origin_x, origin_y, needle_len, scale_start_deg + needle_angle);
+}

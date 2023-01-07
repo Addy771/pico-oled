@@ -41,22 +41,12 @@ typedef struct
     uint16_t height;
 } bitmap;
 
-typedef struct 
-{
-    int16_t origin_x;
-    int16_t origin_y;
-    uint16_t needle_len;
-    int16_t scale_min;
-    int16_t scale_max;
-    int16_t needle_value;
-} analog_gauge;
-
 
 class pico_oled
 {
     private:
         OLED_type oled_controller;
-        uint8_t reset_gpio;
+        uint8_t rst_gpio;
         uint8_t i2c_addr;
         uint8_t oled_height, oled_width;
         uint8_t *screen_buffer;
@@ -89,7 +79,7 @@ class pico_oled
             this->cursor_y = cursor_y;
         }
    
-        void set_font(gfx_font font);
+        void set_font(gfx_font new_font);
         void draw_char(uint8_t char_c, uint8_t x_pos, uint8_t y_pos);
         void print(const char *print_str);
         void print_num(const char *format_str, int32_t print_data);
@@ -105,6 +95,7 @@ class pico_oled
         void draw_line_dotted(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
         void draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y);
         void draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x);  
+        void draw_line_polar(uint8_t origin_x, uint8_t origin_y, uint8_t magnitude, float angle);
         void draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1); 
         void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);   
         void draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const bitmap full_bitmap, uint8_t x, uint8_t y);
@@ -114,4 +105,23 @@ class pico_oled
         uint8_t pixel_counter;
 };
 
+
+class analog_gauge
+{
+    private:
+        pico_oled *master_display;
+
+    public:
+        analog_gauge(pico_oled *display);
+        void draw();
+        int16_t origin_x;
+        int16_t origin_y;
+        uint16_t needle_len;
+        uint8_t marker_len;
+        float scale_min;
+        float scale_max;
+        float scale_start_deg;
+        float scale_end_deg;
+        int16_t needle_value;
+};
 
