@@ -110,18 +110,26 @@ class analog_gauge
 {
     private:
         pico_oled *master_display;
+        int16_t _origin_x;
+        int16_t _origin_y;
+        uint16_t _needle_len;
+        uint8_t _marker_len;
+        float _scale_min;
+        float _scale_max;
+        float _scale_start_deg;
+        float _scale_end_deg;
+        uint8_t _scale_divisions;
+        uint8_t _half_divisions;
+        float _needle_value;        
 
     public:
         analog_gauge(pico_oled *display);
+        void set_scale(float scale_min, float scale_max, float scale_start_deg, float scale_end_deg);
+        void set_markers(uint8_t scale_divisions, uint8_t needle_len, uint8_t marker_len, uint8_t half_divisions);
+        void set_position(int16_t origin_x, int16_t origin_y);
+        void set_value(float needle_value);
+        void draw_maj_div_line(float div_angle);    
         void draw();
-        int16_t origin_x;
-        int16_t origin_y;
-        uint16_t needle_len;
-        uint8_t marker_len;
-        float scale_min;
-        float scale_max;
-        float scale_start_deg;
-        float scale_end_deg;
-        int16_t needle_value;
+        
 };
 

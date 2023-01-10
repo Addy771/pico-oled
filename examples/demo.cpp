@@ -38,12 +38,14 @@ int main()
     uint8_t x, y, x_dir, y_dir;
     uint8_t min_y = 9;
     uint16_t i;
+    uint8_t count_down, fullness;    
 
     display.fill(0);    // Clear display    
     display.set_cursor(0,0);             
     display.print("Pico-OLED\nLibrary Demo");
     display.render();
     sleep_ms(2000);    
+
 
     while (1)
     {
@@ -255,7 +257,6 @@ int main()
 
         
         // Bar graph demo
-        uint8_t count_down, fullness;
 
         count_down = 0;
         fullness = 0;
@@ -271,8 +272,6 @@ int main()
 
             display.draw_hbar(fullness, false, 22, min_y, DISPLAY_WIDTH - 22, min_y + 10);
             display.draw_hbar(fullness, true, 22, min_y + 12, DISPLAY_WIDTH - 22, min_y + 22);
-
-
 
             display.render();
 
@@ -296,6 +295,46 @@ int main()
             
         }
 
+        // Analog gauge demo
+        fullness = 0;
+        count_down = 0;
+
+        // Create an analog_gauge object and configure it's parameters
+        static analog_gauge gauge(&display);
+        gauge.set_position(63, 63);
+        gauge.set_scale(/*scale_min=*/ 0, /*scale_max=*/ 100, /*scale_start_deg=*/ 220, /*scale_end_deg=*/ 320);
+        gauge.set_markers(/*scale_divisions=*/ 3, /*needle_len=*/ 45, /*marker_len=*/ 15, /*half_divisions=*/ 1);
+
+        for (i = 0; i < 500; i++)      
+        {      
+            display.fill(0);    // Clear display    
+            display.set_cursor(0,0);             
+            display.print("Analog Gauge\n");     
+
+            gauge.set_value(fullness);
+            display.print_num("Value: %3d", fullness);
+    
+            gauge.draw();
+            display.render();        
+
+            // Flip direction when the top is reached
+            if (count_down)
+            {
+                if (fullness-- == 0)
+                {
+                    fullness = 0;
+                    count_down = 0;
+                }
+            }
+            else
+            {
+                if (fullness++ > 100)
+                {
+                    fullness = 100;
+                    count_down = 1;
+                }
+            }
+        }
 
     }
 

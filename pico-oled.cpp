@@ -860,7 +860,7 @@ void pico_oled::draw_line_polar(uint8_t origin_x, uint8_t origin_y, uint8_t magn
     float end_x, end_y;
 
     // Convert degrees to radians
-    angle = (angle / 360) * 2*M_PI;
+    angle = (angle / 360.0) * 2.0 * M_PI;
 
     // Convert polar to rect
     sincosf(angle, &end_y, &end_x);
@@ -876,25 +876,152 @@ analog_gauge::analog_gauge(pico_oled *display)
     master_display = display;
 
     // Set variables to reasonable defaults
-    origin_x = 63;
-    origin_y = 63;
-    needle_len = 15;
-    marker_len = 5;
-    scale_min = 0;
-    scale_max = 100;
-    scale_start_deg = 220;
-    scale_end_deg = 320;
-    needle_value = 50;
+    set_position(63, 63);
+    set_scale(0, 100, 220, 320);
+    set_markers(3, 45, 15, 1);
+
+    // _origin_x = 63;
+    // _origin_y = 63;
+    // _scale_min = 0;
+    // _scale_max = 100;
+    // _scale_start_deg = 220;
+    // _scale_end_deg = 320;
+    // _scale_divisions = 3;
+    // _needle_len = 45;
+    // _marker_len = 15;
+    // _half_divisions = 1;
+
+}
+
+
+void analog_gauge::draw_maj_div_line(float div_angle)
+{
+    float x1, y1, x2, y2;
+    float x_ratio, y_ratio;
+
+    // Convert degrees to radians
+    div_angle = (div_angle / 360.0) * 2.0 * M_PI;
+
+    // Determine line start and end points
+    sincosf(div_angle, &y_ratio, &x_ratio);
+    x1 = (_needle_len - _marker_len) * x_ratio + _origin_x;
+    y1 = (_needle_len - _marker_len) * y_ratio + _origin_y;
+    x2 = _marker_len * x_ratio + x1;
+    y2 = _marker_len * y_ratio + y1;
+
+    master_display->draw_line(x1, y1, x2, y2);
+
+    // master_display->print_num("%.0f, ", x1);
+    // master_display->print_num("%.0f,   ", y1);
+    // master_display->print_num("%.0f, ", x2);
+    // master_display->print_num("%.0f\n", y2);
 }
 
 
 // Draw the gauge using the parameters provided within the class
 void analog_gauge::draw()
 {
-    // Draw scale divisions
+    // //dbg
+    // master_display->fill(0);
+    // master_display->set_cursor(0,0);
+    // master_display->print_num("x=%d, ", _origin_x);
+    // master_display->print_num("y=%d, ", _origin_y);
+    // master_display->print_num("s_min=%.0f, ", _scale_min);
+    // master_display->print_num("s_max=%.0f, ", _scale_max);    
+    // master_display->print_num("s_start=%.0f, ", _scale_start_deg);    
+    // master_display->print_num("s_end=%.0f, ", _scale_end_deg);    
+    // master_display->print_num("s_divs=%d, ", _scale_divisions);    
+    // master_display->print_num("needle_l=%d, ", _needle_len);
+    // master_display->print_num("marker_l=%d, ", _marker_len);
+    // master_display->print_num("half_div=%d ", _half_divisions);    
+    // return;
+
+
+    // Draw scale end lines
+    draw_maj_div_line(_scale_start_deg);
+    draw_maj_div_line(_scale_end_deg);
+
+    // Draw scale division lines as necessary
+    float deg_per_div = (_scale_end_deg - _scale_start_deg) / _scale_divisions;
+
+    for (uint8_t marker_num = 1; marker_num < _scale_divisions; marker_num++)
+    {
+        draw_maj_div_line(deg_per_div * marker_num + _scale_start_deg);
+    }
+
+    // Draw half-division markers if necessary
+    if (_half_divisions)
+    {
+        // Make the marker length shorter for these minor division lines
+        uint8_t temp_marker_len = _marker_len;
+        _marker_len /= 2;
+
+        for (uint8_t marker_num = 0; marker_num < _scale_divisions; marker_num++)
+        {
+            draw_maj_div_line(deg_per_div * marker_num + _scale_start_deg + (deg_per_div/2));
+        }        
+
+        _marker_len = temp_marker_len;   // Restore original length value
+
+    }
 
     // Draw needle line
-    float needle_angle = (scale_end_deg - scale_start_deg) * (needle_value - scale_min) / (scale_max - scale_min);
+    float needle_angle = (_scale_end_deg - _scale_start_deg) * (_needle_value - _scale_min) / (_scale_max - _scale_min);
 
-    master_display->draw_line_polar(origin_x, origin_y, needle_len, scale_start_deg + needle_angle);
+    master_display->draw_line_polar(_origin_x, _origin_y, _needle_len, _scale_start_deg + needle_angle);
+}
+
+
+/// @brief Configure range of scale angles and values.
+///        Angles are absolute, with 0 degrees pointing to the screen's right (--->)
+/// @param scale_min Needle value when the gauge is at the minimum
+/// @param scale_max Needle value when the gauge is at the maximum
+/// @param scale_start_deg Angle to draw the start of the gauge 
+/// @param scale_end_deg  Angle to draw the end of the gauge 
+void analog_gauge::set_scale(float scale_min, float scale_max, float scale_start_deg, float scale_end_deg)
+{
+    // TODO: sanity checks?
+    // TODO: determine whether scale goes from left-to-right or vice versa
+    _scale_min = scale_min;
+    _scale_max = scale_max;
+    _scale_start_deg = scale_start_deg;
+    _scale_end_deg = scale_end_deg;
+}
+
+
+/// @brief Configure or disable scale division markers
+/// @param scale_divisions Number of marked segments of the gauge. Set to 1 or lower to only draw the gauge end markers
+/// @param needle_len Length of the gauge needle. Overall size of the gauge is based on this.
+/// @param marker_len Length of lines to mark major scale divisions. These are drawn from the outer radius of the gauge and should not be larger than needle_len
+/// @param half_divisions Set to nonzero value to enable drawing minor division lines at the middle of each scale division
+void analog_gauge::set_markers(uint8_t scale_divisions, uint8_t needle_len, uint8_t marker_len, uint8_t half_divisions)
+{
+    _scale_divisions = scale_divisions;
+    _half_divisions = half_divisions;
+
+    // Make sure marker length is within the valid range
+    if (marker_len < needle_len)
+        _marker_len = marker_len;
+    else
+        _marker_len = needle_len;
+
+    _needle_len = needle_len;
+}
+
+
+/// @brief Configure the screen coordinates where the gauge needle starts from
+/// @param origin_x 
+/// @param origin_y 
+void analog_gauge::set_position(int16_t origin_x, int16_t origin_y)
+{
+    _origin_x = origin_x;
+    _origin_y = origin_y;
+}
+
+
+/// @brief Update the value that the gauge will point to
+/// @param needle_value 
+void analog_gauge::set_value(float needle_value)
+{
+    _needle_value = needle_value;
 }
