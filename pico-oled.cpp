@@ -53,7 +53,8 @@ pico_oled::pico_oled(OLED_type controller_ic, uint8_t i2c_address, uint8_t scree
 }
 
 
-
+/// @brief Send a command to the display controller
+/// @param cmd byte to send
 void pico_oled::oled_send_cmd(uint8_t cmd)
 {
     // I2C write process expects a control byte followed by data
@@ -65,7 +66,7 @@ void pico_oled::oled_send_cmd(uint8_t cmd)
 }
 
 
-// Write to the display's configuration registers to set it up
+/// @brief Write to the display's configuration registers to set it up
 void pico_oled::oled_init()
 {
     // Only use the reset signaling if a valid GPIO pin is selected
@@ -89,7 +90,7 @@ void pico_oled::oled_init()
     }
 }
 
-// Set configuration registers for ssd1306 OLED controllers
+/// @brief Set configuration registers for ssd1306 OLED controllers
 void pico_oled::oled_ssd1306_init()
 {
     oled_send_cmd(OLED_SET_DISP | 0x00); // set display off
@@ -147,7 +148,7 @@ void pico_oled::oled_ssd1306_init()
 }
 
 
-// Set configuration registers for ssd1309 OLED controllers
+/// @brief Set configuration registers for ssd1309 OLED controllers
 void pico_oled::oled_ssd1309_init()
 {
     oled_send_cmd(OLED_SET_DISP | 0x00); // set display off
@@ -217,7 +218,8 @@ void pico_oled::set_brightness(uint8_t brightness)
 }
 
 
-// Fill entire display with the specified byte
+/// @brief Fill entire display with the specified byte
+/// @param fill value to set each column of 8 pixels to
 void pico_oled::fill(uint8_t fill)
 {
     // Skip first byte since it's a control byte
@@ -228,7 +230,7 @@ void pico_oled::fill(uint8_t fill)
 }
 
 
-// Write the entire screen buffer to the OLED 
+/// @brief Write the entire screen buffer to the OLED 
 void pico_oled::render()
 {
     // ////// debug stack check
@@ -254,7 +256,8 @@ void pico_oled::render()
 }
 
 
-// Tell the display whether to turn on all pixels or follow RAM contents
+/// @brief Tell the display whether to turn on all pixels or follow RAM contents
+/// @param disp_on nonzero to turn on all screen pixels, zero to display RAM contents
 void pico_oled::all_on(uint8_t disp_on)
 {
     if (disp_on)
@@ -264,7 +267,15 @@ void pico_oled::all_on(uint8_t disp_on)
 }
 
 
-// Copy a block from the source src_bitmap to the screen buffer
+/// @brief Copy a block from the source src_bitmap to the screen buffer
+/// @param src_bitmap bitmap data
+/// @param src_width width of the entire source bitmap
+/// @param src_x source x coordinate to copy from
+/// @param src_y source y coordinate to copy from
+/// @param blit_width width of region to copy
+/// @param blit_height height of region to copy
+/// @param screen_x screen x coordinate to draw at
+/// @param screen_y screen y coordinate to draw at
 void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint16_t src_x, uint8_t src_y, uint8_t blit_width, uint8_t blit_height, uint8_t screen_x, uint8_t screen_y)
 {
     uint8_t dest_start_page = screen_y / OLED_PAGE_HEIGHT;
@@ -449,7 +460,8 @@ void pico_oled::blit_screen(const uint8_t *src_bitmap, uint16_t src_width, uint1
 }
 
 
-// Set the font for future text drawing
+/// @brief Set the font to use for subsequent print calls
+/// @param new_font font to use
 void pico_oled::set_font(gfx_font new_font)
 {
     font = new_font;
@@ -457,7 +469,10 @@ void pico_oled::set_font(gfx_font new_font)
 }
 
 
-// Draw a single character at the specified position. Font must be previously set.
+/// @brief Draw a single character at the specified position. Font must be previously set.
+/// @param char_c character to draw
+/// @param x_pos screen x position
+/// @param y_pos screen y position
 void pico_oled::draw_char(uint8_t char_c, uint8_t x_pos, uint8_t y_pos)
 {
     // Abort if the char is not within the drawable range
@@ -474,7 +489,8 @@ void pico_oled::draw_char(uint8_t char_c, uint8_t x_pos, uint8_t y_pos)
 }
 
 
-// Print a basic string. Only basic character drawing is supported, control characters have no effect
+/// @brief Print a basic string. Only basic character drawing is supported, control characters have no effect
+/// @param print_str string to print
 void pico_oled::print(const char *print_str)
 {
     uint8_t start_x = cursor_x;
@@ -517,8 +533,9 @@ void pico_oled::print(const char *print_str)
 }
 
 
-// Print numbers by outsourcing formatting to sprintf()
-
+/// @brief Print numbers by outsourcing formatting to sprintf()
+/// @param format_str printf style format string
+/// @param print_data number to print
 void pico_oled::print_num(const char *format_str, int32_t print_data)
 {
     // Allocate a buffer big enough to hold the printed data
@@ -528,6 +545,9 @@ void pico_oled::print_num(const char *format_str, int32_t print_data)
 }
 
 
+/// @brief Print numbers by outsourcing formatting to sprintf()
+/// @param format_str printf style format string
+/// @param print_data number to print
 void pico_oled::print_num(const char *format_str, uint32_t print_data)
 {
     // Allocate a buffer big enough to hold the printed data
@@ -537,6 +557,9 @@ void pico_oled::print_num(const char *format_str, uint32_t print_data)
 }
 
 
+/// @brief Print numbers by outsourcing formatting to sprintf()
+/// @param format_str printf style format string
+/// @param print_data number to print
 void pico_oled::print_num(const char *format_str, float print_data)
 {
     // Allocate a buffer big enough to hold the printed data
@@ -545,28 +568,46 @@ void pico_oled::print_num(const char *format_str, float print_data)
     print(output_buf);
 }
 
+
+/// @brief Print numbers by outsourcing formatting to sprintf()
+/// @param format_str printf style format string
+/// @param print_data number to print
 void pico_oled::print_num(const char *format_str, uint8_t print_data)
 {
     print_num(format_str, (uint32_t) print_data);
 }
 
+
+/// @brief Print numbers by outsourcing formatting to sprintf()
+/// @param format_str printf style format string
+/// @param print_data number to print
 void pico_oled::print_num(const char *format_str, int8_t print_data)
 {
     print_num(format_str, (int32_t) print_data);
 }
 
+
+/// @brief Print numbers by outsourcing formatting to sprintf()
+/// @param format_str printf style format string
+/// @param print_data number to print
 void pico_oled::print_num(const char *format_str, uint16_t print_data)
 {
     print_num(format_str, (uint32_t) print_data);
 }
 
+
+/// @brief Print numbers by outsourcing formatting to sprintf()
+/// @param format_str printf style format string
+/// @param print_data number to print
 void pico_oled::print_num(const char *format_str, int16_t print_data)
 {
     print_num(format_str, (int32_t) print_data);
 }
 
 
-// Draw a single pixel in the screen buffer
+/// @brief Draw a single pixel in the screen buffer
+/// @param x screen x position
+/// @param y screen y position
 void pico_oled::draw_pixel(uint8_t x, uint8_t y)
 {
     // Abort if coordinates are out of bounds
@@ -580,7 +621,9 @@ void pico_oled::draw_pixel(uint8_t x, uint8_t y)
 }
 
 
-// Draw a single pixel every other time this function is called
+/// @brief Draw a single pixel every other time this function is called
+/// @param x screen x position
+/// @param y screen y position
 void pico_oled::draw_pixel_alternating(uint8_t x, uint8_t y)
 {
     if (pixel_counter++ > 0)
@@ -591,7 +634,11 @@ void pico_oled::draw_pixel_alternating(uint8_t x, uint8_t y)
 }
 
 
-// Draw a line with Bresenham's algorithm
+/// @brief Draw a line with the Bresenham algorithm
+/// @param x1 screen x position of line start
+/// @param y1 screen y position of line start
+/// @param x2 screen x position of line end
+/// @param y2 screen y position of line end
 void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
     // Only try to use fast line functions for the default solid line draw_pixel()
@@ -675,7 +722,11 @@ void pico_oled::draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 }
 
 
-// Draw a dotted line by switching out the draw_pixel function
+/// @brief Draw a dotted line with the Bresenham algorithm
+/// @param x1 screen x position of line start
+/// @param y1 screen y position of line start
+/// @param x2 screen x position of line end
+/// @param y2 screen y position of line end
 void pico_oled::draw_line_dotted(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
     pixel_counter = 0;    // Reset pixel counter so that calling this function results in the same kind of line draw each time
@@ -687,7 +738,10 @@ void pico_oled::draw_line_dotted(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 }
 
 
-// Simplified line drawing for horizontal lines
+/// @brief Simplified line drawing for horizontal lines
+/// @param x1 screen x position of line start
+/// @param x2 screen x position of line end
+/// @param y screen y coordinate of the line
 void pico_oled::draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y)
 {
 
@@ -717,7 +771,10 @@ void pico_oled::draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y)
 }
 
 
-// Simplified line drawing for vertical lines
+/// @brief Simplified line drawing for vertical lines
+/// @param y1 screen y coordinate of the line start
+/// @param y2 screen y coordinate of the line end
+/// @param x screen x coordinate of the line
 void pico_oled::draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x)
 {
     // Flip y coordinates to keep y1 < y2
@@ -761,50 +818,61 @@ void pico_oled::draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x)
 }
 
 
-// Draw a vertical progress bar 
-// 
-void pico_oled::draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
+/// @brief Draw a vertical bar graph
+/// @param fullness how full the bar is, where 0 = empty and 100 = full
+/// @param x1 screen x coordinate of the top-left corner of the bar
+/// @param y1 screen y coordinate of the top-left corner of the bar
+/// @param x2 screen x coordinate of the bottom-right corner of the bar
+/// @param y2 screen y coordinate of the bottom-right corner of the bar
+void pico_oled::draw_vbar(uint8_t fullness, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
-    uint8_t height = y1 - y0;
+    uint8_t height = y2 - y1;
     uint8_t filled_px = (fullness * (height - 2)) / 100;
 
     // Draw the outline
-    draw_box(x0, y0, x1, y1); 
+    draw_box(x1, y1, x2, y2); 
 
     // Draw lines to fill the internal area
-    for (uint8_t y_line = y1 - 1; y_line >= (y1 - 1) - filled_px; y_line--)
-        draw_fast_hline(x0 + 1, x1 - 1, y_line);
+    for (uint8_t y_line = y2 - 1; y_line >= (y2 - 1) - filled_px; y_line--)
+        draw_fast_hline(x1 + 1, x2 - 1, y_line);
 }
 
 
-// Draw a horizontal progress bar 
-// start_right: Greater than 0 for bar to start on the right instead of the left side
-void pico_oled::draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
+/// @brief Draw a horizontal bar graph
+/// @param fullness how full the bar is, where 0 = empty and 100 = full
+/// @param start_right Greater than 0 for bar to start on the right instead of the left side
+/// @param x1 screen x coordinate of the top-left corner of the bar
+/// @param y1 screen y coordinate of the top-left corner of the bar
+/// @param x2 screen x coordinate of the bottom-right corner of the bar
+/// @param y2 screen y coordinate of the bottom-right corner of the bar
+void pico_oled::draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
-    uint8_t width = x1 - x0;
+    uint8_t width = x2 - x1;
     uint8_t filled_px = (fullness * (width - 2)) / 100;
 
     // Draw the outline
-    draw_box(x0, y0, x1, y1);
+    draw_box(x1, y1, x2, y2);
 
     // Draw lines to fill the internal area
     if (start_right)
     {
-        for (uint8_t x_line = x1 - 1; x_line >= (x1 - 1) - filled_px; x_line--)
-            draw_fast_vline(y0 + 1, y1 - 1, x_line);
+        for (uint8_t x_line = x2 - 1; x_line >= (x2 - 1) - filled_px; x_line--)
+            draw_fast_vline(y1 + 1, y2 - 1, x_line);
     }
     else
     {
-        for (uint8_t x_line = x0 + 1; x_line <= (x0 + 1) + filled_px; x_line++)
-            draw_fast_vline(y0 + 1, y1 - 1, x_line);
+        for (uint8_t x_line = x1 + 1; x_line <= (x1 + 1) + filled_px; x_line++)
+            draw_fast_vline(y1 + 1, y2 - 1, x_line);
     }
 }
 
 
-/* Draw a vertical, bitmapped progress bar.
- * empty_bitmap: bitmap of the bar (empty frame) when it is 0% full
- * full_bitmap: bitmap of the bar (with or without frame) when it is 100% full.
-*/
+/// @brief Draw a vertical bar graph using bitmap images
+/// @param fullness how full the bar is, where 0 = empty and 100 = full
+/// @param empty_bitmap bitmap of the bar (empty frame) when it is 0% full
+/// @param full_bitmap bitmap of the bar (with or without frame) when it is 100% full.
+/// @param x screen x coordinate of the top-left corner of the bar image
+/// @param y screen y coordinate of the top-left corner of the bar image
 void pico_oled::draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const bitmap full_bitmap, uint8_t x, uint8_t y)
 {
     uint8_t filled_px = (fullness * empty_bitmap.height) / 100;   // This assumes the active area is the whole bar bmp, including frame
@@ -818,9 +886,12 @@ void pico_oled::draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const
 }
 
 
-/* Solid fill a rectangular region. 
- * blank: if true, rectangle will be cleared (off) instead of filled
-*/
+/// @brief Solid fill a rectangular region
+/// @param blank nonzero to clear the rectangle (pixels off)
+/// @param x1 screen x coordinate of the top-left corner of the rectangle
+/// @param y1 screen y coordinate of the top-left corner of the rectangle
+/// @param x2 screen x coordinate of the bottom-right corner of the rectangle
+/// @param y2 screen y coordinate of the bottom-right corner of the rectangle
 void pico_oled::fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
     // Switch coordinates around so that y1 < y2
@@ -864,13 +935,17 @@ void pico_oled::fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uin
 }
 
 
-// Draw a box outline at the given coordinates
-void pico_oled::draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
+/// @brief Draw a box outline at the given coordinates
+/// @param x1 screen x coordinate of the top-left corner of the box
+/// @param y1 screen y coordinate of the top-left corner of the box
+/// @param x2 screen x coordinate of the bottom-right corner of the box
+/// @param y2 screen y coordinate of the bottom-right corner of the box
+void pico_oled::draw_box(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
-    draw_fast_hline(x0, x1, y0);  // Top 
-    draw_fast_hline(x0, x1, y1);  // Bottom
-    draw_fast_vline(y0, y1, x0);  // Left
-    draw_fast_vline(y0, y1, x1);  // Right       
+    draw_fast_hline(x1, x2, y1);  // Top 
+    draw_fast_hline(x1, x2, y2);  // Bottom
+    draw_fast_vline(y1, y2, x1);  // Left
+    draw_fast_vline(y1, y2, x2);  // Right       
 }
 
 
@@ -880,6 +955,11 @@ void pico_oled::draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
 // r = sqrt(x^2 + y^2)
 
 
+/// @brief Draw a line with polar coordinates
+/// @param origin_x screen x coordinate of the start of the line
+/// @param origin_y screen y coordinate of the start of the line
+/// @param magnitude polar magnitude of the line
+/// @param angle polar angle of the line
 void pico_oled::draw_line_polar(uint8_t origin_x, uint8_t origin_y, uint8_t magnitude, float angle)
 {
     float end_x, end_y;
@@ -896,8 +976,10 @@ void pico_oled::draw_line_polar(uint8_t origin_x, uint8_t origin_y, uint8_t magn
 }
 
 
-
-
+/// @brief Determine the screen space required to draw a string
+/// @param input_str string to calculate size of
+/// @param width pointer to variable to store the calculated width
+/// @param height pointer to variable to store the calculated height
 void pico_oled::get_str_dimensions(const char *input_str, uint8_t *width, uint8_t *height)
 {
     uint8_t max_width = 0;
@@ -935,12 +1017,12 @@ void pico_oled::get_str_dimensions(const char *input_str, uint8_t *width, uint8_
 }
 
 
-/// @brief 
-/// @param print_str 
-/// @param padding 
-/// @param fill_bg 
-/// @param x 
-/// @param y 
+/// @brief Draw a string within a box outline
+/// @param print_str string to print
+/// @param padding number of extra pixels to pad around the text
+/// @param fill_bg nonzero to clear the area under the text box before drawing it
+/// @param x screen x coordinate of the top-left of the text box
+/// @param y screen y coordinate of the top-left of the text box
 void pico_oled::draw_boxed_text(const char *print_str, uint8_t padding, uint8_t fill_bg, uint8_t x, uint8_t y)
 {
     uint8_t text_width, text_height;
@@ -994,6 +1076,8 @@ analog_gauge::analog_gauge(pico_oled *display)
 }
 
 
+/// @brief Draw a major division marker of full length
+/// @param div_angle polar angle to draw the marker at
 void analog_gauge::draw_maj_div_line(float div_angle)
 {
     float x1, y1, x2, y2;
@@ -1018,7 +1102,7 @@ void analog_gauge::draw_maj_div_line(float div_angle)
 }
 
 
-// Draw the gauge using the parameters provided within the class
+/// @brief Draw the gauge using the parameters provided within the class
 void analog_gauge::draw()
 {
     // //dbg

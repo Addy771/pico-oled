@@ -98,11 +98,11 @@ class pico_oled
         void draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y);
         void draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x);  
         void draw_line_polar(uint8_t origin_x, uint8_t origin_y, uint8_t magnitude, float angle);
-        void draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1); 
-        void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);   
+        void draw_vbar(uint8_t fullness, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2); 
+        void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);   
         void draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const bitmap full_bitmap, uint8_t x, uint8_t y);
         void fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
-        void draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
+        void draw_box(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
         void draw_boxed_text(const char *print_str, uint8_t padding, uint8_t fill_bg, uint8_t x, uint8_t y);
 
         uint8_t pixel_counter;
