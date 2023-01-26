@@ -80,6 +80,8 @@ class pico_oled
         }
    
         void set_font(gfx_font new_font);
+        void set_brightness(uint8_t brightness);
+        void get_str_dimensions(const char *input_str, uint8_t *width, uint8_t *height);
         void draw_char(uint8_t char_c, uint8_t x_pos, uint8_t y_pos);
         void print(const char *print_str);
         void print_num(const char *format_str, int32_t print_data);
@@ -100,7 +102,8 @@ class pico_oled
         void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);   
         void draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const bitmap full_bitmap, uint8_t x, uint8_t y);
         void fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
-        void draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)        ;
+        void draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
+        void draw_boxed_text(const char *print_str, uint8_t padding, uint8_t fill_bg, uint8_t x, uint8_t y);
 
         uint8_t pixel_counter;
 };

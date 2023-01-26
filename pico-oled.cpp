@@ -127,8 +127,7 @@ void pico_oled::oled_ssd1306_init()
     oled_send_cmd(0x30); // 0.83xVcc  
 
     /* display */
-    oled_send_cmd(OLED_SET_CONTRAST); // set contrast control 
-    oled_send_cmd(0x0F); // 0 to 255
+    set_brightness(0x0F); // 0 to 255
 
     oled_send_cmd(OLED_SET_ENTIRE_ON); // set entire display on to follow RAM content
 
@@ -188,8 +187,7 @@ void pico_oled::oled_ssd1309_init()
     oled_send_cmd(0x30);  // 0.83xVcc 
 
     /* display */
-    oled_send_cmd(OLED_SET_CONTRAST); // set contrast control 
-    oled_send_cmd(0x0F); // 0 to 255
+    set_brightness(0x0F); // 0 to 255
 
     oled_send_cmd(OLED_SET_ENTIRE_ON); // set entire display on to follow RAM content
 
@@ -209,6 +207,16 @@ void pico_oled::oled_ssd1309_init()
 }
 
 
+/// @brief Set the contrast (brightness) of the OLED. 
+/// @warning high brightness levels can cause burn-in and reduce the lifespan of the display
+/// @param brightness 0 to 255, where 0 is the lowest brightness possible.
+void pico_oled::set_brightness(uint8_t brightness)
+{
+    oled_send_cmd(OLED_SET_CONTRAST); 
+    oled_send_cmd(brightness);  
+}
+
+
 // Fill entire display with the specified byte
 void pico_oled::fill(uint8_t fill)
 {
@@ -223,6 +231,16 @@ void pico_oled::fill(uint8_t fill)
 // Write the entire screen buffer to the OLED 
 void pico_oled::render()
 {
+    // ////// debug stack check
+    // uint8_t prev_x = cursor_x;
+    // uint8_t prev_y = cursor_y;
+
+    // set_cursor(0, oled_height - font.line_height);
+    // print_num("%8X", (uint32_t) &prev_y);
+
+    // set_cursor(prev_x, prev_y);
+
+
     // Set the start/end coordinates for drawing the entire screen
     oled_send_cmd(OLED_SET_COL_ADDR);
     oled_send_cmd(0);                       // Start column
@@ -459,6 +477,8 @@ void pico_oled::draw_char(uint8_t char_c, uint8_t x_pos, uint8_t y_pos)
 // Print a basic string. Only basic character drawing is supported, control characters have no effect
 void pico_oled::print(const char *print_str)
 {
+    uint8_t start_x = cursor_x;
+
     // Abort if no font has been set yet
     if (!font_set)
         return;
@@ -482,9 +502,14 @@ void pico_oled::print(const char *print_str)
         }
         else if (*print_str == '\n')
         {
-            // Reposition cursor at the left edge of the screen, one line down
-            cursor_x = 0;
+            // Reposition cursor one line down, at the x coordinate where printing started
+            cursor_x = start_x;
             cursor_y += font.line_height;            
+        }
+        else if (*print_str == '\r')
+        {
+            // Reposition cursor back to the left edge of the screen
+            cursor_x = 0;
         }
 
         print_str++;
@@ -871,6 +896,81 @@ void pico_oled::draw_line_polar(uint8_t origin_x, uint8_t origin_y, uint8_t magn
 }
 
 
+
+
+void pico_oled::get_str_dimensions(const char *input_str, uint8_t *width, uint8_t *height)
+{
+    uint8_t max_width = 0;
+    uint8_t line_width = 0;
+    char* current_char = (char *)input_str; 
+
+    *height = font.line_height;
+
+    while (*current_char != '\0')
+    {
+        if (*current_char != '\n')
+        {
+
+            line_width += font.character[*current_char - font.first].x_advance; 
+        }
+        else
+        {
+            // Character is newline, height is increased one line's worth
+            *height += font.line_height;
+
+            // Save current line's width if it's longest
+            if (line_width > max_width)
+                max_width = line_width;
+
+            line_width = 0;
+        }
+        current_char++;
+    }
+
+    if (line_width > max_width)
+        *width = line_width;
+    else
+        *width = max_width;
+
+}
+
+
+/// @brief 
+/// @param print_str 
+/// @param padding 
+/// @param fill_bg 
+/// @param x 
+/// @param y 
+void pico_oled::draw_boxed_text(const char *print_str, uint8_t padding, uint8_t fill_bg, uint8_t x, uint8_t y)
+{
+    uint8_t text_width, text_height;
+    uint8_t tmp_cursor_x = cursor_x;
+    uint8_t tmp_cursor_y = cursor_y;
+    uint8_t box_x2;
+    uint8_t box_y2;
+    
+    get_str_dimensions(print_str, &text_width, &text_height);
+
+    box_x2 = 2 + x + text_width + 2*padding;
+    box_y2 = 2 + y + text_height + 2*padding;
+
+    // Clear the area under the textbox if desired
+    if (fill_bg)
+        fill_rect(1, x, y, box_x2, box_y2);
+
+    draw_box(x, y, box_x2, box_y2);
+
+    set_cursor(x + padding + 2, y + padding + 1);
+    print(print_str);
+
+    // Restore original cursor position
+    set_cursor(tmp_cursor_x, tmp_cursor_y);
+}
+
+
+
+/// @brief An object which handles the configuration and drawing of an analog gauge
+/// @param display Address of pico_oled display instance to use for drawing
 analog_gauge::analog_gauge(pico_oled *display)
 {
     master_display = display;

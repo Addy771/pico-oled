@@ -40,12 +40,14 @@ int main()
     uint16_t i;
     uint8_t count_down, fullness;    
 
+    analog_gauge gauge(&display);
+
     display.fill(0);    // Clear display    
     display.set_cursor(0,0);             
+
     display.print("Pico-OLED\nLibrary Demo");
     display.render();
     sleep_ms(2000);    
-
 
     while (1)
     {
@@ -76,6 +78,15 @@ int main()
 
         display.render();
         sleep_ms(3000);
+
+        display.fill(0);    // Clear display  
+        display.set_cursor(0,0);           
+        display.print("Text demo");        
+        display.draw_boxed_text("Text Box\npad = 0px", 0, 0, 5, 12);
+        display.draw_boxed_text("Text Box\npad = 4px", 4, 0, 30, 36);
+
+        display.render();
+        sleep_ms(3000);        
 
 
         // Bitmap demo
@@ -211,8 +222,8 @@ int main()
 
 
         // Rectangle demo
-        uint8_t box_w, box_h;
-        uint8_t blank = 0;
+        static uint8_t box_w, box_h;
+        static uint8_t blank = 0;
 
         display.fill(0);    // Clear display     
         display.set_cursor(0,0);   
@@ -295,46 +306,46 @@ int main()
             
         }
 
-        // Analog gauge demo
-        fullness = 0;
-        count_down = 0;
+        // // Analog gauge demo
+        // fullness = 0;
+        // count_down = 0;
 
-        // Create an analog_gauge object and configure it's parameters
-        static analog_gauge gauge(&display);
-        gauge.set_position(63, 63);
-        gauge.set_scale(/*scale_min=*/ 0, /*scale_max=*/ 100, /*scale_start_deg=*/ 220, /*scale_end_deg=*/ 320);
-        gauge.set_markers(/*scale_divisions=*/ 3, /*needle_len=*/ 45, /*marker_len=*/ 15, /*half_divisions=*/ 1);
+        // // Create an analog_gauge object and configure it's parameters
+        // //static analog_gauge gauge(&display);
+        // gauge.set_position(63, 63);
+        // gauge.set_scale(/*scale_min=*/ 0, /*scale_max=*/ 100, /*scale_start_deg=*/ 220, /*scale_end_deg=*/ 320);
+        // gauge.set_markers(/*scale_divisions=*/ 3, /*needle_len=*/ 45, /*marker_len=*/ 15, /*half_divisions=*/ 1);
 
-        for (i = 0; i < 500; i++)      
-        {      
-            display.fill(0);    // Clear display    
-            display.set_cursor(0,0);             
-            display.print("Analog Gauge\n");     
+        // for (i = 0; i < 500; i++)      
+        // {      
+        //     display.fill(0);    // Clear display    
+        //     display.set_cursor(0,0);             
+        //     display.print("Analog Gauge\n");     
 
-            gauge.set_value(fullness);
-            display.print_num("Value: %3d", fullness);
+        //     gauge.set_value(fullness);
+        //     display.print_num("Value: %3d", fullness);
     
-            gauge.draw();
-            display.render();        
+        //     gauge.draw();
+        //     display.render();        
 
-            // Flip direction when the top is reached
-            if (count_down)
-            {
-                if (fullness-- == 0)
-                {
-                    fullness = 0;
-                    count_down = 0;
-                }
-            }
-            else
-            {
-                if (fullness++ > 100)
-                {
-                    fullness = 100;
-                    count_down = 1;
-                }
-            }
-        }
+        //     // Flip direction when the top is reached
+        //     if (count_down)
+        //     {
+        //         if (fullness-- == 0)
+        //         {
+        //             fullness = 0;
+        //             count_down = 0;
+        //         }
+        //     }
+        //     else
+        //     {
+        //         if (fullness++ > 100)
+        //         {
+        //             fullness = 100;
+        //             count_down = 1;
+        //         }
+        //     }
+        // }
 
     }
 
