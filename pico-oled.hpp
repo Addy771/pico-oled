@@ -41,22 +41,12 @@ typedef struct
     uint16_t height;
 } bitmap;
 
-typedef struct 
-{
-    int16_t origin_x;
-    int16_t origin_y;
-    uint16_t needle_len;
-    int16_t scale_min;
-    int16_t scale_max;
-    int16_t needle_value;
-} analog_gauge;
-
 
 class pico_oled
 {
     private:
         OLED_type oled_controller;
-        uint8_t reset_gpio;
+        uint8_t rst_gpio;
         uint8_t i2c_addr;
         uint8_t oled_height, oled_width;
         uint8_t *screen_buffer;
@@ -89,7 +79,9 @@ class pico_oled
             this->cursor_y = cursor_y;
         }
    
-        void set_font(gfx_font font);
+        void set_font(gfx_font new_font);
+        void set_brightness(uint8_t brightness);
+        void get_str_dimensions(const char *input_str, uint8_t *width, uint8_t *height);
         void draw_char(uint8_t char_c, uint8_t x_pos, uint8_t y_pos);
         void print(const char *print_str);
         void print_num(const char *format_str, int32_t print_data);
@@ -105,13 +97,42 @@ class pico_oled
         void draw_line_dotted(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
         void draw_fast_hline(uint8_t x1, uint8_t x2, uint8_t y);
         void draw_fast_vline(uint8_t y1, uint8_t y2, uint8_t x);  
-        void draw_vbar(uint8_t fullness, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1); 
-        void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);   
+        void draw_line_polar(uint8_t origin_x, uint8_t origin_y, uint8_t magnitude, float angle);
+        void draw_vbar(uint8_t fullness, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2); 
+        void draw_hbar(uint8_t fullness, uint8_t start_right, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);   
         void draw_bmp_vbar(uint8_t fullness, const bitmap empty_bitmap, const bitmap full_bitmap, uint8_t x, uint8_t y);
         void fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
-        void draw_box(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)        ;
+        void draw_box(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
+        void draw_boxed_text(const char *print_str, uint8_t padding, uint8_t fill_bg, uint8_t x, uint8_t y);
 
         uint8_t pixel_counter;
 };
 
+
+class analog_gauge
+{
+    private:
+        pico_oled *master_display;
+        int16_t _origin_x;
+        int16_t _origin_y;
+        uint16_t _needle_len;
+        uint8_t _marker_len;
+        float _scale_min;
+        float _scale_max;
+        float _scale_start_deg;
+        float _scale_end_deg;
+        uint8_t _scale_divisions;
+        uint8_t _half_divisions;
+        float _needle_value;        
+
+    public:
+        analog_gauge(pico_oled *display);
+        void set_scale(float scale_min, float scale_max, float scale_start_deg, float scale_end_deg);
+        void set_markers(uint8_t scale_divisions, uint8_t needle_len, uint8_t marker_len, uint8_t half_divisions);
+        void set_position(int16_t origin_x, int16_t origin_y);
+        void set_value(float needle_value);
+        void draw_maj_div_line(float div_angle);    
+        void draw();
+        
+};
 
