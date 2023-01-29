@@ -909,12 +909,23 @@ void pico_oled::fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uin
 
     uint8_t start_page = y1 / OLED_PAGE_HEIGHT;
     uint8_t end_page = y2 / OLED_PAGE_HEIGHT;    
-    uint8_t col_mask;
+    uint8_t col_mask, column;
+    int8_t inc;
+
+    // Determine whether to iterate up or down
+    if (x1 <= x2)
+        inc = 1;
+    else
+        inc = -1;
 
     for (uint8_t page = start_page; page <= end_page; page++)
     {
-        for(uint8_t column = x1; column != x2; (x1 <= x2) ? ++column : --column)
+        //for(uint8_t column = x1; column != x2; (x1 <= x2) ? column++ : column--)
+
+        column = x1 + -1*inc;   // Start just ahead of x1 because column gets incremented first
+        do
         {
+            column += inc;
             col_mask = 0xFF;
 
             // For the first page, we may not need to fill every pixel
@@ -923,14 +934,15 @@ void pico_oled::fill_rect(uint8_t blank, uint8_t x1, uint8_t y1, uint8_t x2, uin
 
             // For the last page, we may not need to fill every pixel
             if (page == end_page)
-                col_mask &= 0xFF >> (y2 - page*OLED_PAGE_HEIGHT);   // Shift zeros into MSBs
+                col_mask &= 0xFF >> (OLED_PAGE_HEIGHT - (1 + y2 - page*OLED_PAGE_HEIGHT));   // Shift zeros into MSBs
             
             // Modify the screen contents according to the specified mode
             if (blank)
                 screen_buffer[1 + column + page*oled_width] &= ~col_mask;
             else
                 screen_buffer[1 + column + page*oled_width] |= col_mask;
-        }
+        }   
+        while (column != x2);
     }
 }
 
