@@ -80,6 +80,7 @@ class pico_oled
         }
    
         void set_font(gfx_font new_font);
+        uint8_t get_font_height(){return font.line_height;};    // char height + 1
         void set_brightness(uint8_t brightness);
         void get_str_dimensions(const char *input_str, uint8_t *width, uint8_t *height);
         void draw_char(uint8_t char_c, uint8_t x_pos, uint8_t y_pos);
