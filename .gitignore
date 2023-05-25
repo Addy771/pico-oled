@@ -38,3 +38,4 @@
 cmake-*
 .DS_Store
 build
+*.fnt
