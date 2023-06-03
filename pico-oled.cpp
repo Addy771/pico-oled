@@ -9,7 +9,7 @@
 
 //#define GFX_DEBUG
 
-#define PRINT_NUM_BUFFER 30     // Length of temporary buffers for printing numbers
+#define PRINT_NUM_BUFFER 50     // Length of temporary buffers for printing numbers
 
 
 pico_oled::pico_oled(OLED_type controller_ic, uint8_t i2c_address, uint8_t screen_width, uint8_t screen_height, uint8_t reset_gpio)
