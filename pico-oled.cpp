@@ -533,6 +533,35 @@ void pico_oled::print(const char *print_str)
 }
 
 
+/// print_centered_x()
+/// @brief Print a string centered on the x axis
+/// @param print_str string to print
+/// @param y_pos y position to print at
+
+void pico_oled::print_centered_x(const char *print_str, uint8_t y_pos)
+{
+    uint8_t text_width = 0;
+    get_str_dimensions(print_str,&text_width,NULL);
+    uint8_t x = (oled_width - text_width) / 2;
+    set_cursor(x, y_pos);
+    print(print_str);
+}
+
+/// print_centered_y()
+/// @brief Print a string centered on the y axis
+/// @param print_str string to print
+/// @param x_pos x position to print at
+
+void pico_oled::print_centered_y(const char *print_str, uint8_t x_pos)
+{
+    uint8_t text_height = 0;
+    get_str_dimensions(print_str,NULL,&text_height);
+    uint8_t y = (oled_height - text_height) / 2;
+    set_cursor(x_pos, y);
+    print(print_str);
+}
+
+
 /// @brief Print numbers by outsourcing formatting to sprintf()
 /// @param format_str printf style format string
 /// @param print_data number to print

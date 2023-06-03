@@ -91,7 +91,9 @@ class pico_oled
         void print_num(const char *format_str, uint16_t print_data);
         void print_num(const char *format_str, int16_t print_data);
         void print_num(const char *format_str, uint8_t print_data);
-        void print_num(const char *format_str, int8_t print_data);        
+        void print_num(const char *format_str, int8_t print_data);   
+        void print_centered_x(const char *print_str, uint8_t y_pos);
+        void print_centered_y(const char *print_str, uint8_t x_pos);     
         void draw_pixel(uint8_t x, uint8_t y);
         void draw_pixel_alternating(uint8_t x, uint8_t y);
         void draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
